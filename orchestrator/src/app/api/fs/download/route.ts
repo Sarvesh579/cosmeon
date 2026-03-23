@@ -22,9 +22,24 @@ export async function GET(req: NextRequest) {
 
   const buffers: Buffer[] = []
 
-  for (const chunk of sorted) {
+  for(const chunk of sorted){
 
-    const data = await fetchChunk(chunk.node, chunk.chunkId)
+    let data
+
+    for(const node of chunk.nodes){
+
+      try{
+
+        data = await fetchChunk(node,chunk.chunkId)
+        break
+
+      }catch{}
+
+    }
+
+    if(!data){
+      throw new Error("chunk unavailable")
+    }
 
     buffers.push(data)
   }

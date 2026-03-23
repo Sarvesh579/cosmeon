@@ -2,25 +2,23 @@ import mongoose from "mongoose"
 
 const ChunkSchema = new mongoose.Schema({
   chunkId: String,
-  node: String,
+  nodes: [String],
   order: Number
 })
 
 const FileSchema = new mongoose.Schema({
-
   filename: String,
-
   size: Number,
-
   rootHash: String,
-
   chunks: [ChunkSchema],
-
   accessCount: {
     type: Number,
     default: 0
+  },
+  heatScore: {
+    type: Number,
+    default: 0
   }
-
 })
 
 export default mongoose.models.File ||

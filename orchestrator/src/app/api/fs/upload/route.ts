@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { chunkBuffer } from "@/lib/fs-lite/chunker"
 import { sha256 } from "@/lib/fs-lite/hash"
-import { sendChunk } from "@/lib/fs-lite/distribute"
+import { sendChunkReplicated } from "@/lib/fs-lite/distribute"
 import { buildMerkleRoot } from "@/lib/fs-lite/merkle"
 import { connectDB } from "@/lib/db"
 import File from "@/models/File"
@@ -25,17 +25,13 @@ export async function POST(req: NextRequest) {
   for (const chunk of chunks) {
 
     const id = sha256(chunk)
-
-    const node = await sendChunk(id, chunk)
-
-    chunkHashes.push(id)
+    const nodes = await sendChunkReplicated(id,chunk,2)
 
     chunkMeta.push({
-      chunkId: id,
-      node,
+      chunkId:id,
+      nodes,
       order
     })
-
     order++
   }
 

@@ -1,6 +1,9 @@
 # COSMEON FS-LITE
 
-COSMEON FS-LITE is an educational distributed file system simulator that demonstrates how systems like HDFS, Ceph, and S3 store data internally.  
+COSMEON FS-LITE is an educational distributed file system, with 2 major improvements: 
+- Access Pattern Adaptive Replication, &
+- Self-Healing Merkle Repair.
+It is also a simulator that demonstrates how systems like HDFS, Ceph, and S3 store data internally.  
 Files are split into chunks, distributed across multiple storage nodes, and reconstructed on request.  
 The system includes a Next.js orchestrator, simulated storage nodes, and real-time cluster observability.  
 It runs locally using Docker to emulate a distributed storage cluster.
