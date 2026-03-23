@@ -1,0 +1,26 @@
+# node
+node_modules/
+package-lock.json
+
+# next
+.next/
+out/
+
+# env
+.env
+.env.local
+
+# logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# docker volumes
+data/
+
+# build
+dist/
+
+testfile.txt

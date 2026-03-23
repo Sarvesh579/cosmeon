@@ -1,0 +1,67 @@
+services:
+  orbit1:
+    build:
+      context: ..
+      dockerfile: docker/node.Dockerfile
+    environment:
+      NODE_ID: ORBIT-1
+      DATA_DIR: /data
+    ports:
+      - "4001:4000"
+    volumes:
+      - orbit1:/data
+
+  orbit2:
+    build:
+      context: ..
+      dockerfile: docker/node.Dockerfile
+    environment:
+      NODE_ID: ORBIT-2
+      DATA_DIR: /data
+    ports:
+      - "4002:4000"
+    volumes:
+      - orbit2:/data
+
+  orbit3:
+    build:
+      context: ..
+      dockerfile: docker/node.Dockerfile
+    environment:
+      NODE_ID: ORBIT-3
+      DATA_DIR: /data
+    ports:
+      - "4003:4000"
+    volumes:
+      - orbit3:/data
+
+  orbit4:
+    build:
+      context: ..
+      dockerfile: docker/node.Dockerfile
+    environment:
+      NODE_ID: ORBIT-4
+      DATA_DIR: /data
+    ports:
+      - "4004:4000"
+    volumes:
+      - orbit4:/data
+
+  orbit5:
+    build:
+      context: ..
+      dockerfile: docker/node.Dockerfile
+    environment:
+      NODE_ID: ORBIT-5
+      DATA_DIR: /data
+    ports:
+      - "4005:4000"
+    volumes:
+      - orbit5:/data
+
+volumes:
+  orbit1:
+  orbit2:
+  orbit3:
+  orbit4:
+  orbit5:
