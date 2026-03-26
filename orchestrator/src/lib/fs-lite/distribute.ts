@@ -1,15 +1,31 @@
 import axios from "axios"
-import { NODES } from "./nodes"
+import Node from "@/models/Node"
 
-export async function sendChunkReplicated(chunkId:string,chunk:Buffer,replicas=2){
-  const nodes = []
+export async function sendChunkReplicated(
+  chunkId: string,
+  chunk: Buffer,
+  replicas = 2
+) {
 
-  for(let i=0;i<replicas;i++){
-    const node = NODES[(Math.floor(Math.random()*NODES.length))]
-    await axios.put(`${node.url}/chunk/${chunkId}`,chunk,{
-      headers:{"Content-Type":"application/octet-stream"}
-    })
-    nodes.push(node.id)
+  const nodes = await Node.find({ healthy: true })
+  const racks: any = {}
+  const selected: string[] = []
+
+  for (const n of nodes) {
+    if (!racks[n.rack]) racks[n.rack] = []
+    racks[n.rack].push(n)
   }
-  return nodes
+
+  const rackList = Object.keys(racks)
+
+  for (let i = 0; i < replicas; i++) {
+    const rack = rackList[i % rackList.length]
+    const node = racks[rack][0]
+    await axios.put(`${node.url}/chunk/${chunkId}`, chunk, {
+      headers: { "Content-Type": "application/octet-stream" }
+    })
+    selected.push(node.nodeId)
+  }
+
+  return selected
 }

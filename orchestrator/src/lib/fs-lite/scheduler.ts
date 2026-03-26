@@ -2,6 +2,7 @@ import { adaptiveReplication } from "./adaptiveReplication"
 import { selfHeal } from "./selfHeal"
 import { monitorNodes } from "./nodeHealth"
 import { handleNodeFailures } from "./failureHandler"
+import { proofCheck } from "./proofCheck"
 
 export function startScheduler(){
   setInterval(async()=>{
@@ -19,4 +20,8 @@ export function startScheduler(){
   setInterval(async()=>{
     await handleNodeFailures()
   }, 30000)
+
+  setInterval(async()=>{
+    await proofCheck()
+  }, 90000)
 }

@@ -1,15 +1,23 @@
 import axios from "axios"
-import { NODES } from "./nodes"
+import Node from "@/models/Node"
+import { connectDB } from "@/lib/db"
 
 export async function fetchChunk(nodeId: string, chunkId: string) {
 
-  const node = NODES.find(n => n.id === nodeId)
+  await connectDB()
 
-  if (!node) throw new Error("node not found")
+  const node = await Node.findOne({ nodeId })
 
-  const res = await axios.get(`${node.url}/chunk/${chunkId}`, {
-    responseType: "arraybuffer"
-  })
+  if (!node) return null
 
-  return Buffer.from(res.data)
+  try {
+    const res = await axios.get(`${node.url}/chunk/${chunkId}`, {
+      responseType: "arraybuffer"
+    })
+
+    return Buffer.from(res.data)
+
+  } catch {
+    return null
+  }
 }

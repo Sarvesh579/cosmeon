@@ -1,6 +1,7 @@
 import express from "express"
 import fs from "fs"
 import path from "path"
+import crypto from "crypto"
 
 const app = express()
 app.use(express.raw({ type: "*/*", limit: "50mb" }))
@@ -11,6 +12,27 @@ const DATA_DIR = process.env.DATA_DIR || "./data"
 if (!fs.existsSync(DATA_DIR)) {
   fs.mkdirSync(DATA_DIR, { recursive: true })
 }
+
+app.get("/proof/:id", (req, res) => {
+
+  const chunkId = req.params.id
+  const filePath = path.join(DATA_DIR, chunkId)
+
+  if (!fs.existsSync(filePath)) {
+    return res.status(404).send("missing")
+  }
+
+  const data = fs.readFileSync(filePath)
+
+  const segment = data.slice(0, 64)
+
+  const proof = crypto
+    .createHash("sha256")
+    .update(segment)
+    .digest("hex")
+
+  res.json({ proof })
+})
 
 app.get("/health", (req, res) => {
   const files = fs.readdirSync(DATA_DIR)

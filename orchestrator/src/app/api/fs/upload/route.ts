@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { chunkBuffer } from "@/lib/fs-lite/chunker"
+import { contentDefinedChunk } from "@/lib/fs-lite/chunker"
 import { sha256 } from "@/lib/fs-lite/hash"
 import { sendChunkReplicated } from "@/lib/fs-lite/distribute"
 import { buildMerkleRoot } from "@/lib/fs-lite/merkle"
@@ -15,7 +15,7 @@ export async function POST(req: NextRequest) {
   const data = await req.arrayBuffer()
   const buffer = Buffer.from(data)
 
-  const chunks = chunkBuffer(buffer)
+  const chunks = contentDefinedChunk(buffer)
 
   const chunkHashes: string[] = []
   const chunkMeta: any[] = []

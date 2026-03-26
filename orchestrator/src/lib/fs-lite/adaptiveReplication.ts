@@ -20,7 +20,8 @@ export async function adaptiveReplication(){
     for(const chunk of file.chunks){
       if(chunk.nodes.length >= targetReplicas) continue
       const source = chunk.nodes[0]
-      const data = await fetchChunk(source,chunk.chunkId)
+      const data = await fetchChunk(source, chunk.chunkId)
+      if (!data) continue
       const node = NODES[Math.floor(Math.random()*NODES.length)]
 
       await axios.put(`${node.url}/chunk/${chunk.chunkId}`,data,{
