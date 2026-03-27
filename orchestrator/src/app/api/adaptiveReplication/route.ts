@@ -35,7 +35,6 @@ export async function POST(req: NextRequest) {
       chunk.nodes[Math.floor(Math.random() * chunk.nodes.length)]
 
     const data = await fetchChunk(source, chunk.chunkId)
-
     if (!data) continue
 
     await axios.put(
@@ -43,12 +42,10 @@ export async function POST(req: NextRequest) {
       data,
       { headers: { "Content-Type": "application/octet-stream" } }
     )
-
     chunk.nodes.push("ORBIT-5")
   }
 
   await file.save()
-
   return NextResponse.json({
     ok: true,
     accessCount: file.accessCount
