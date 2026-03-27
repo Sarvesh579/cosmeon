@@ -11,7 +11,6 @@ export async function adaptiveReplication(){
     file.accessCount = 0
 
     await file.save()
-
     let targetReplicas = 1
 
     if(file.heatScore > 10) targetReplicas = 3
@@ -23,7 +22,6 @@ export async function adaptiveReplication(){
       const data = await fetchChunk(source, chunk.chunkId)
       if (!data) continue
       const node = NODES[Math.floor(Math.random()*NODES.length)]
-
       await axios.put(`${node.url}/chunk/${chunk.chunkId}`,data,{
         headers:{"Content-Type":"application/octet-stream"}
       })

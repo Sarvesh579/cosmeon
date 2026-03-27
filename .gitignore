@@ -23,5 +23,4 @@ data/
 # build
 dist/
 
-testfile.txt
-test.txt
+*.txt

@@ -1,49 +1,243 @@
 "use client"
-
 import useSWR from "swr"
 import { fetcher } from "@/lib/fetcher"
-import { useRef } from "react"
+import { useRef, useState } from "react"
 
-export default function FileExplorer(){
-  const { data, mutate } = useSWR("/api/files", fetcher)
-  const inputRef = useRef<HTMLInputElement>(null)
+export default function FileExplorer() {
+  const input = useRef<HTMLInputElement>(null)
+  const [currentFolder, setCurrentFolder] = useState("/")
+  const { data, mutate } = useSWR(`/api/files?folder=${currentFolder}`, fetcher)
+  const { data: folders } = useSWR("/api/folders", fetcher)
 
-  async function upload(){
-    const file = inputRef.current?.files?.[0]
-    if(!file) return
-    const buffer = await file.arrayBuffer()
+  async function createFolder() {
+    const name = prompt("Folder name")
+    if (!name) return
 
-    await fetch("/api/fs/upload",{
-      method:"POST",
-      headers:{
-        "x-filename":file.name
-      },
-      body:buffer
+    await fetch("/api/folders", {
+      method: "POST",
+      body: JSON.stringify({
+        name,
+        parent: currentFolder
+      })
     })
     mutate()
   }
 
-  return(
-    <div>
-      <h2 className="text-xl mb-4">Files</h2>
-      <input type="file" ref={inputRef}/>
-      <button onClick={upload} className="ml-2 border px-2">
-        Upload
-      </button>
+  async function renameFolder(id: string) {
+    const name = prompt("New folder name")
+    if (!name) return
 
-      <ul className="mt-6 space-y-2">
-        {data?.map((f:any)=>(
-          <li key={f._id}>
-            {f.filename}
-            <a
-              href={`/api/fs/download?id=${f._id}`}
-              className="ml-3 text-blue-600"
+    await fetch("/api/folders/rename", {
+      method: "POST",
+      body: JSON.stringify({ id, name })
+    })
+
+    mutate()
+  }
+
+  async function deleteFolder(id: string) {
+    if (!confirm("Delete this folder?")) return
+
+    await fetch("/api/folders/delete", {
+      method: "POST",
+      body: JSON.stringify({ id })
+    })
+
+    mutate()
+  }
+
+  async function remove(id: string) {
+    await fetch("/api/files/delete", {
+      method: "POST",
+      body: JSON.stringify({ id })
+    })
+    mutate()
+  }
+
+  async function rename(id: string) {
+    const name = prompt("New name")
+    if (!name) return
+    await fetch("/api/files/rename", {
+      method: "POST",
+      body: JSON.stringify({ id, name })
+    })
+    mutate()
+  }
+
+  async function uploadFile(file: File) {
+    const buffer = await file.arrayBuffer()
+
+    await fetch("/api/fs/upload", {
+      method: "POST",
+      headers: {
+        "x-filename": file.name,
+        "x-folder": currentFolder
+      },
+      body: buffer
+    })
+    mutate()
+  }
+
+  function handleDrop(e: any) {
+    e.preventDefault()
+    const file = e.dataTransfer.files[0]
+    uploadFile(file)
+  }
+
+  function handleDrag(e: any) {
+    e.preventDefault()
+  }
+
+  async function upload() {
+    const file = input.current?.files?.[0]
+    if (!file) return
+    await uploadFile(file)
+    input.current!.value = ""
+  }
+
+  return (
+    <div
+      onDrop={handleDrop}
+      onDragOver={handleDrag}
+      className="p-8 max-w-5xl mx-auto"
+    >
+
+      {/* Header */}
+      <div className="flex items-center justify-between mb-6">
+        <div className="text-lg font-semibold">
+          COSMEON Storage
+        </div>
+
+        <div className="text-sm text-gray-500">
+          Drag & Drop files anywhere
+        </div>
+      </div>
+
+      {/* Breadcrumb */}
+      <div className="flex items-center gap-4 mb-6 text-sm">
+        <div className="text-gray-600">
+          Root {currentFolder !== "/" && ` / ${currentFolder}`}
+        </div>
+
+        {currentFolder !== "/" && (
+          <button
+            onClick={() => {
+              const parts = currentFolder.split("/").filter(Boolean)
+              parts.pop()
+              const parent = parts.length ? "/" + parts.join("/") : "/"
+              setCurrentFolder(parent)
+            }}
+            className="text-blue-600 hover:underline"
+          >
+            ← Back
+          </button>
+        )}
+      </div>
+
+
+      {/* Toolbar */}
+      <div className="flex items-center gap-3 mb-6">
+        <input
+          type="file"
+          ref={input}
+          className="border rounded px-3 py-1 text-sm"
+        />
+
+        <button
+          onClick={upload}
+          className="px-4 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
+        >
+          Upload
+        </button>
+
+        <button
+          onClick={createFolder}
+          className="px-4 py-1 border rounded hover:bg-gray-700 text-sm"
+        >
+          New Folder
+        </button>
+      </div>
+
+      {/* File Area */}
+      <div className="border rounded-lg overflow-hidden">
+        {/* Folders */}
+        {folders
+          ?.filter((f: any) => f.parent === currentFolder)
+          .map((f: any) => (
+            <div
+              key={f._id}
+              className="flex items-center justify-between px-4 py-3 border-b hover:bg-gray-700"
             >
-              Download
-            </a>
-          </li>
+
+              <div
+                onClick={() => setCurrentFolder(`${currentFolder}/${f.name}`)}
+                className="flex items-center gap-3 cursor-pointer"
+              >
+                <span className="text-lg">📁</span>
+                <span>{f.name}</span>
+              </div>
+
+              <div className="flex gap-4 text-sm">
+
+                <button
+                  onClick={() => renameFolder(f._id)}
+                  className="text-blue-600 hover:underline"
+                >
+                  Rename
+                </button>
+
+                <button
+                  onClick={() => deleteFolder(f._id)}
+                  className="text-red-600 hover:underline"
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
         ))}
-      </ul>
+        
+        {/* Files */}
+        {data?.map((f: any) => (
+
+          <div
+            key={f.id}
+            className="flex items-center justify-between px-4 py-3 border-b hover:bg-gray-700"
+          >
+            <div className="flex flex-col">
+              <span className="font-medium">
+                {f.name}
+              </span>
+
+              <span className="text-xs text-gray-500">
+                {f.chunks} chunks
+              </span>
+            </div>
+
+            <div className="flex items-center gap-4 text-sm">
+              <a
+                href={`/api/fs/download?id=${f.id}`}
+                className="text-blue-600 hover:underline"
+              >
+                Download
+              </a>
+
+              <button
+                onClick={() => rename(f.id)}
+                className="text-blue-600 hover:underline"
+              >
+                Rename
+              </button>
+
+              <button
+                onClick={() => remove(f.id)}
+                className="text-red-600 hover:underline"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   )
 }

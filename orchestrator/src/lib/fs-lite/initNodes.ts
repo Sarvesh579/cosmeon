@@ -1,6 +1,8 @@
 import Node from "@/models/Node"
+import { connectDB } from "@/lib/db"
 
 export async function initNodes(){
+  await connectDB()
 
   const nodes = [
     {nodeId:"ORBIT-1",url:"http://localhost:4001",rack:"alpha",capacity:100},
@@ -11,11 +13,10 @@ export async function initNodes(){
   ]
 
   for(const n of nodes){
-
-    const exists = await Node.findOne({nodeId:n.nodeId})
-
-    if(!exists){
-      await Node.create({...n,healthy:true,used:0})
-    }
+    await Node.updateOne(
+      { nodeId: n.nodeId },
+      { $setOnInsert: { ...n, healthy: true, used: 0 } },
+      { upsert: true }
+    )
   }
 }

@@ -18,6 +18,14 @@ const FileSchema = new mongoose.Schema({
   heatScore: {
     type: Number,
     default: 0
+  },
+  folder: {
+    type: String,
+    default: "/"
+  },
+  createdAt: {
+    type: Date,
+    default: Date.now
   }
 })
 

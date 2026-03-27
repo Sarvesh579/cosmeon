@@ -6,7 +6,6 @@ export async function sendChunkReplicated(
   chunk: Buffer,
   replicas = 2
 ) {
-
   const nodes = await Node.find({ healthy: true })
   const racks: any = {}
   const selected: string[] = []
@@ -15,17 +14,15 @@ export async function sendChunkReplicated(
     if (!racks[n.rack]) racks[n.rack] = []
     racks[n.rack].push(n)
   }
-
   const rackList = Object.keys(racks)
-
   for (let i = 0; i < replicas; i++) {
     const rack = rackList[i % rackList.length]
-    const node = racks[rack][0]
+    const list = racks[rack]
+    const node = list[Math.floor(Math.random() * list.length)]
     await axios.put(`${node.url}/chunk/${chunkId}`, chunk, {
       headers: { "Content-Type": "application/octet-stream" }
     })
     selected.push(node.nodeId)
   }
-
   return selected
 }

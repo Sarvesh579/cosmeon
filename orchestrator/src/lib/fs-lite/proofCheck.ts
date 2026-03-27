@@ -9,9 +9,11 @@ export async function proofCheck(){
       for(const nodeId of chunk.nodes){
         const node = await Node.findOne({nodeId})
         try {
+          const list = await axios.get(`${node.url}/chunks`)
+          if (!list.data.includes(chunk.chunkId)) continue
           await axios.get(`${node.url}/proof/${chunk.chunkId}`)
         } catch {
-          console.log("node lost chunk", nodeId, chunk.chunkId)
+          {/*console.log("node lost chunk", nodeId, chunk.chunkId)*/}
         }
       }
     }
