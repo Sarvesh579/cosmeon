@@ -3,6 +3,7 @@
 import {useEffect} from "react"
 import {useRouter} from "next/navigation"
 import FileExplorer from "@/components/FileExplorer"
+import DashboardMap from "@/components/DashboardMap"
 
 export default function Dashboard(){
 
@@ -16,8 +17,16 @@ export default function Dashboard(){
   },[])
 
   return(
-    <div>
-      <FileExplorer/>
+    <div className="flex h-screen">
+
+      <div className="w-1/2 border-r overflow-auto">
+        <FileExplorer/>
+      </div>
+
+      <div className="w-1/2">
+        <DashboardMap/>
+      </div>
+
     </div>
   )
 }
