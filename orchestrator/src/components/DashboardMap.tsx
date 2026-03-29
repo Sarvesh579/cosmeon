@@ -1,7 +1,8 @@
 "use client"
+import {useEffect,useState} from "react"
+import dynamic from "next/dynamic"
 
-import { useEffect, useState } from "react"
-import NodeMap from "@/components/NodeMap"
+const NodeMap=dynamic(()=>import("@/components/NodeMap"),{ssr:false})
 
 type Data={
   nodes:any[]
@@ -11,18 +12,14 @@ type Data={
 }
 
 export default function DashboardMap(){
-
-  const [data,setData]=useState<Data | null>(null)
+  const [data,setData]=useState<Data|null>(null)
 
   useEffect(()=>{
-
     const userId=localStorage.getItem("userId")
-    if(!userId) return
-
+    if(!userId)return
     fetch(`/api/visualization?userId=${userId}`)
       .then(r=>r.json())
       .then(setData)
-
   },[])
 
   if(!data){

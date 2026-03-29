@@ -1,22 +1,19 @@
 "use client"
-
 import {useState} from "react"
 import {useRouter} from "next/navigation"
 
 const cities={
-  "Mumbai":{lat:19.076,lon:72.8777},
-  "Thane":{lat:19.2183,lon:72.9781},
-  "Pune":{lat:18.5204,lon:73.8567},
-  "Kalyan-Dombivli":{lat:19.2403,lon:73.1305},
+  "Mumbai":{lat:19.0760,lon:72.8777},
+  "Navi Mumbai":{lat:19.0330,lon:73.0297},
   "Panvel":{lat:18.9894,lon:73.1175},
-  "Navi Mumbai":{lat:19.033,lon:73.0297},
-  "Mira-Bhayandar":{lat:19.2952,lon:72.8544}
+  "Thane":{lat:19.2183,lon:72.9781},
+  "Mira-Bhayandar":{lat:19.2952,lon:72.8544},
+  "Vasai-Virar":{lat:19.3919,lon:72.8397},
+  "Kalyan-Dombivli":{lat:19.2403,lon:73.1305}
 }
 
 export default function Login(){
-
   const router=useRouter()
-
   const [username,setUsername]=useState("")
   const [password,setPassword]=useState("")
   const [city,setCity]=useState("")
@@ -24,23 +21,16 @@ export default function Login(){
   const [error,setError]=useState("")
 
   async function submit(){
-
-    const endpoint=mode==="login"
-      ? "/api/login"
-      : "/api/signup"
-
-    const location=city ? cities[city as keyof typeof cities] : null
-
-    if(mode==="signup" && !location){
+    const endpoint=mode==="login"?"/api/login":"/api/signup"
+    const location=city?cities[city as keyof typeof cities]:null
+    if(mode==="signup"&&!location){
       setError("Select a city")
       return
     }
 
     const res=await fetch(endpoint,{
       method:"POST",
-      headers:{
-        "Content-Type":"application/json"
-      },
+      headers:{"Content-Type":"application/json"},
       body:JSON.stringify({
         username,
         password,
@@ -56,15 +46,14 @@ export default function Login(){
     }
 
     localStorage.setItem("userId",data.userId)
+    localStorage.setItem("username",username)
 
     router.push("/dashboard")
   }
 
   return(
     <div className="flex items-center justify-center h-screen bg-black text-white">
-
       <div className="w-80 space-y-4">
-
         <div className="text-xl text-center">
           COSMEON {mode==="login"?"Login":"Signup"}
         </div>
@@ -84,7 +73,7 @@ export default function Login(){
           className="w-full border px-3 py-2 rounded bg-zinc-900"
         />
 
-        {mode==="signup" && (
+        {mode==="signup"&&(
           <select
             value={city}
             onChange={e=>setCity(e.target.value)}
@@ -97,7 +86,7 @@ export default function Login(){
           </select>
         )}
 
-        {error && (
+        {error&&(
           <div className="text-red-500 text-sm">
             {error}
           </div>
@@ -114,9 +103,7 @@ export default function Login(){
           onClick={()=>setMode(mode==="login"?"signup":"login")}
           className="text-sm text-gray-400 w-full"
         >
-          {mode==="login"
-            ?"Create new account"
-            :"Already have an account"}
+          {mode==="login"?"Create new account":"Already have an account"}
         </button>
       </div>
     </div>

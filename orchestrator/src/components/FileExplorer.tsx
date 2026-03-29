@@ -1,14 +1,17 @@
 "use client"
 import useSWR from "swr"
-import { useRef, useState, useEffect } from "react"
+import { useRef, useState, useEffect, DragEvent } from "react"
 
 export default function FileExplorer() {
   const input = useRef<HTMLInputElement>(null)
   const [currentFolder, setCurrentFolder] = useState("/")
-  const [userId,setUserId] = useState<string | null>(null)
+  const [userId,setUserId]=useState<string | null>(null)
+  const [username,setUsername]=useState<string | null>(null)
+  const [dragging,setDragging]=useState(false)
 
   useEffect(()=>{
     setUserId(localStorage.getItem("userId"))
+    setUsername(localStorage.getItem("username"))
   },[])
 
   const { data, mutate } = useSWR(
@@ -18,7 +21,7 @@ export default function FileExplorer() {
         headers:{ "x-user":userId ?? "" }
       }).then(r=>r.json())
   )
-  
+
   const { data: folders } = useSWR(
     userId ? "/api/folders" : null,
     (url)=>
@@ -101,14 +104,28 @@ export default function FileExplorer() {
     mutate()
   }
 
-  function handleDrop(e: any) {
+  function handleDrop(e:DragEvent<HTMLDivElement>){
     e.preventDefault()
-    const file = e.dataTransfer.files[0]
-    uploadFile(file)
+    setDragging(false)
+
+    const files=e.dataTransfer.files
+    if(!files.length) return
+
+    Array.from(files).forEach(uploadFile)
   }
 
-  function handleDrag(e: any) {
+  function handleDragOver(e:DragEvent<HTMLDivElement>){
     e.preventDefault()
+  }
+
+  function handleDragEnter(e:DragEvent<HTMLDivElement>){
+    e.preventDefault()
+    setDragging(true)
+  }
+
+  function handleDragLeave(e:DragEvent<HTMLDivElement>){
+    e.preventDefault()
+    setDragging(false)
   }
 
   async function upload() {
@@ -121,14 +138,24 @@ export default function FileExplorer() {
   return (
     <div
       onDrop={handleDrop}
-      onDragOver={handleDrag}
-      className="p-8 max-w-5xl mx-auto"
+      onDragOver={handleDragOver}
+      onDragEnter={handleDragEnter}
+      onDragLeave={handleDragLeave}
+      className={`p-8 max-w-5xl mx-auto ${dragging?"border-2 border-blue-500 bg-zinc-900":""}`}
     >
 
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="text-lg font-semibold">
           COSMEON Storage
+        </div>
+
+        <div className="text-sm text-gray-500">
+          Hi {username}
+        </div>
+
+        <div className="text-sm text-gray-500">
+          Drag & Drop files anywhere
         </div>
 
         <button
@@ -140,10 +167,6 @@ export default function FileExplorer() {
         >
           Logout
         </button>
-
-        <div className="text-sm text-gray-500">
-          Drag & Drop files anywhere
-        </div>
       </div>
 
       {/* Breadcrumb */}
