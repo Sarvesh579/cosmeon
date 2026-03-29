@@ -8,7 +8,11 @@ const NodeSchema = new mongoose.Schema({
   used: Number,
   latency: Number,
   healthy: Boolean,
-  lastSeen: Date
+  lastSeen: Date,
+  location: {
+    lat:{ type:Number },
+    lon:{ type:Number }
+  }
 })
 
 export default mongoose.models.Node ||

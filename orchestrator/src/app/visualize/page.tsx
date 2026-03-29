@@ -2,11 +2,20 @@
 
 import useSWR from "swr"
 import { fetcher } from "@/lib/fetcher"
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import {useRouter} from "next/navigation"
 import ClusterAnimator from "@/components/ClusterAnimator"
 
 export default function Visualize() {
+  const router=useRouter()
 
+  useEffect(()=>{
+    const userId=localStorage.getItem("userId")
+    if(!userId){
+      router.replace("/login")
+    }
+  },[])
+  
   const { data } = useSWR("/api/files", fetcher)
   const [file,setFile] = useState("")
 

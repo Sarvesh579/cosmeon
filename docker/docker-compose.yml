@@ -59,9 +59,35 @@ services:
     volumes:
       - orbit5:/data
 
+  orbit6:
+    build:
+      context: ..
+      dockerfile: docker/node.Dockerfile
+    environment:
+      NODE_ID: ORBIT-6
+      DATA_DIR: /data
+    ports:
+      - "4006:4000"
+    volumes:
+      - orbit6:/data
+
+  orbit7:
+    build:
+      context: ..
+      dockerfile: docker/node.Dockerfile
+    environment:
+      NODE_ID: ORBIT-7
+      DATA_DIR: /data
+    ports:
+      - "4007:4000"
+    volumes:
+      - orbit7:/data
+
 volumes:
   orbit1:
   orbit2:
   orbit3:
   orbit4:
   orbit5:
+  orbit6:
+  orbit7:

@@ -5,7 +5,8 @@ import File from "@/models/File"
 export async function GET(req: NextRequest) {
   await connectDB()
   const folder = req.nextUrl.searchParams.get("folder") || "/"
-  const files = await File.find({ folder })
+  const userId = req.headers.get("x-user")
+  const files = await File.find({folder, userId})
   const result = files.map(f => ({
     id: f._id,
     name: f.filename,

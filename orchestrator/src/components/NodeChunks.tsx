@@ -7,16 +7,18 @@ type Chunk = {
   chunkId: string
   file: string
   index: number
+  userId: string
 }
 
 export default function NodeChunks({ node }: { node: string }) {
-  const { data } = useSWR<Chunk[]>(`/api/nodeChunks?node=${node}`, fetcher)
-
+  const { data } = useSWR(
+    `/api/nodeChunks?node=${node}`,
+    url => fetch(url).then(r => r.json())
+  )
   if (!data) return null
 
   return (
     <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5 shadow-sm hover:shadow-md transition">
-      
       {/* Node Header */}
       <div className="flex items-center justify-between mb-4">
         <h3 className="font-semibold text-lg text-white">{node}</h3>

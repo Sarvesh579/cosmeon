@@ -1,23 +1,45 @@
 "use client"
 import useSWR from "swr"
-import { fetcher } from "@/lib/fetcher"
-import { useRef, useState } from "react"
+import { useRef, useState, useEffect } from "react"
 
 export default function FileExplorer() {
   const input = useRef<HTMLInputElement>(null)
   const [currentFolder, setCurrentFolder] = useState("/")
-  const { data, mutate } = useSWR(`/api/files?folder=${currentFolder}`, fetcher)
-  const { data: folders } = useSWR("/api/folders", fetcher)
+  const [userId,setUserId] = useState<string | null>(null)
+
+  useEffect(()=>{
+    setUserId(localStorage.getItem("userId"))
+  },[])
+
+  const { data, mutate } = useSWR(
+    userId ? `/api/files?folder=${currentFolder}` : null,
+    (url)=>
+      fetch(url,{
+        headers:{ "x-user":userId ?? "" }
+      }).then(r=>r.json())
+  )
+  
+  const { data: folders } = useSWR(
+    userId ? "/api/folders" : null,
+    (url)=>
+      fetch(url,{
+        headers:{ "x-user":userId ?? "" }
+      }).then(r=>r.json())
+  )
 
   async function createFolder() {
     const name = prompt("Folder name")
     if (!name) return
 
-    await fetch("/api/folders", {
-      method: "POST",
-      body: JSON.stringify({
+    await fetch("/api/folders",{
+      method:"POST",
+      headers:{
+        "Content-Type":"application/json",
+        "x-user":userId ?? ""
+      },
+      body:JSON.stringify({
         name,
-        parent: currentFolder
+        parent:currentFolder
       })
     })
     mutate()
@@ -71,7 +93,8 @@ export default function FileExplorer() {
       method: "POST",
       headers: {
         "x-filename": file.name,
-        "x-folder": currentFolder
+        "x-folder": currentFolder,
+        "x-user":localStorage.getItem("userId") ?? ""
       },
       body: buffer
     })
@@ -108,6 +131,16 @@ export default function FileExplorer() {
           COSMEON Storage
         </div>
 
+        <button
+          onClick={()=>{
+            localStorage.removeItem("userId")
+            window.location.href="/login"
+          }}
+          className="text-red-400"
+        >
+          Logout
+        </button>
+
         <div className="text-sm text-gray-500">
           Drag & Drop files anywhere
         </div>
@@ -133,7 +166,6 @@ export default function FileExplorer() {
           </button>
         )}
       </div>
-
 
       {/* Toolbar */}
       <div className="flex items-center gap-3 mb-6">
@@ -170,7 +202,13 @@ export default function FileExplorer() {
             >
 
               <div
-                onClick={() => setCurrentFolder(`${currentFolder}/${f.name}`)}
+                onClick={() =>
+                  setCurrentFolder(
+                    currentFolder === "/"
+                      ? `/${f.name}`
+                      : `${currentFolder}/${f.name}`
+                  )
+                }
                 className="flex items-center gap-3 cursor-pointer"
               >
                 <span className="text-lg">📁</span>

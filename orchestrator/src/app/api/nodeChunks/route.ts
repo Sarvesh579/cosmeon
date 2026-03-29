@@ -1,26 +1,28 @@
 import { NextRequest, NextResponse } from "next/server"
-import File from "@/models/File"
 import { connectDB } from "@/lib/db"
+import File from "@/models/File"
 
-export async function GET(req: NextRequest) {
+export async function GET(req: NextRequest){
   await connectDB()
-  const node = req.nextUrl.searchParams.get("node")
-  if (!node) {
-    return NextResponse.json({ error: "node missing" }, { status: 400 })
-  }
-  const files = await File.find().lean()
-  const chunks: any[] = []
 
-  for (const file of files) {
-    file.chunks.forEach((chunk: any, index: number) => {
-      if (chunk.nodes.includes(node)) {
+  const node=req.nextUrl.searchParams.get("node")
+
+  const files=await File.find()
+
+  const chunks=[]
+
+  for(const f of files){
+    for(const c of f.chunks){
+      if(c.nodes.includes(node)){
         chunks.push({
-          chunkId: chunk.chunkId,
-          file: file.filename,
-          index
+          chunkId:c.chunkId,
+          file:f.filename,
+          index:c.order,
+          userId:f.userId
         })
       }
-    })
+    }
   }
+
   return NextResponse.json(chunks)
 }

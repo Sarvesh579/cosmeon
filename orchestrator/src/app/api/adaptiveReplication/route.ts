@@ -6,11 +6,8 @@ import { fetchChunk } from "@/lib/fs-lite/fetchChunk"
 import { NODES } from "@/lib/fs-lite/nodes"
 
 export async function POST(req: NextRequest) {
-
   await connectDB()
-
   const { filename } = await req.json()
-
   const file = await File.findOne({ filename })
 
   if (!file) {
@@ -28,15 +25,11 @@ export async function POST(req: NextRequest) {
   }
 
   for (const chunk of file.chunks) {
-
     if (chunk.nodes.includes("ORBIT-5")) continue
-
     const source =
       chunk.nodes[Math.floor(Math.random() * chunk.nodes.length)]
-
     const data = await fetchChunk(source, chunk.chunkId)
     if (!data) continue
-
     await axios.put(
       `${target.url}/chunk/${chunk.chunkId}`,
       data,
