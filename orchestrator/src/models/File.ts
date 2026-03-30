@@ -11,6 +11,8 @@ const FileSchema=new mongoose.Schema({
   filename:String,
   size:Number,
   rootHash:String,
+  cacheExpiresAt:{type:Date},
+  isHot:{type:Boolean,default:false},
   chunks:[ChunkSchema],
   accessCount:{
     type:Number,

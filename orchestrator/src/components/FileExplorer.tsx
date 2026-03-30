@@ -1,6 +1,7 @@
 "use client"
 import useSWR from "swr"
 import { useRef, useState, useEffect, DragEvent } from "react"
+import { emitMapEvent } from "@/lib/mapEvents"
 
 export default function FileExplorer() {
   const input = useRef<HTMLInputElement>(null)
@@ -102,6 +103,16 @@ export default function FileExplorer() {
       body: buffer
     })
     mutate()
+    const user=JSON.parse(localStorage.getItem("userLocation")||"null")
+    const nodes=JSON.parse(localStorage.getItem("cacheNodes")||"[]")
+
+    if(user&&nodes){
+      emitMapEvent({
+        type:"upload",
+        from:user,
+        to:nodes
+      })
+    }
   }
 
   function handleDrop(e:DragEvent<HTMLDivElement>){
@@ -276,6 +287,17 @@ export default function FileExplorer() {
 
             <div className="flex items-center gap-4 text-sm">
               <a
+                onClick={()=>{
+                  const user=JSON.parse(localStorage.getItem("userLocation")||"null")
+                  const nodes=JSON.parse(localStorage.getItem("cacheNodes")||"[]")
+                  if(user&&nodes){
+                    emitMapEvent({
+                      type:"download",
+                      from:nodes[0],
+                      to:[user]
+                    })
+                  }
+                }}
                 href={`/api/fs/download?id=${f.id}`}
                 className="text-blue-600 hover:underline"
               >

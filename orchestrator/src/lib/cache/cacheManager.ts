@@ -9,3 +9,5 @@ export const policies={
   lfu:new LFU(),
   lruk:new LRUK()
 }
+
+export const CACHE_TTL=1*60*1000

@@ -1,6 +1,8 @@
 "use client"
-import { MapContainer, TileLayer, Marker, Popup, CircleMarker } from "react-leaflet"
+import { MapContainer, TileLayer, Marker, Popup, CircleMarker, Polyline } from "react-leaflet"
 import L from "leaflet"
+import { useEffect, useState } from "react"
+import { subscribeMapEvents } from "@/lib/mapEvents"
 
 type Node = {
   nodeId: string
@@ -9,6 +11,12 @@ type Node = {
     lat: number
     lon: number
   }
+}
+
+type Dot = {
+  lat:number
+  lon:number
+  target:{lat:number,lon:number}
 }
 
 type Props = {
@@ -33,7 +41,42 @@ const l2Icon = new L.Icon({
   iconSize: [28, 28]
 })
 
+
 export default function NodeMap({ nodes, userLocation, l1, l2 }: Props) {
+  const [ dots, setDots ] = useState<Dot[]>([])
+
+  useEffect(()=>{
+    const unsub=subscribeMapEvents(e=>{
+      const newDots=e.to.map(t=>({
+        lat:e.from.lat,
+        lon:e.from.lon,
+        target:t
+      }))
+      setDots(d=>[...d,...newDots])
+    })
+
+    return ()=>{
+      unsub()
+    }
+  },[])
+
+  useEffect(()=>{
+    const id=setInterval(()=>{
+      setDots(dots=>{
+        return dots.map(d=>{
+          const dx=(d.target.lat-d.lat)*0.1
+          const dy=(d.target.lon-d.lon)*0.1
+          return{
+            ...d,
+            lat:d.lat+dx,
+            lon:d.lon+dy
+          }
+        })
+      })
+    },60)
+    return()=>clearInterval(id)
+  },[])
+
   return (
     <MapContainer
       center={[userLocation.lat, userLocation.lon]}
@@ -78,6 +121,14 @@ export default function NodeMap({ nodes, userLocation, l1, l2 }: Props) {
           </Marker>
         )
       })}
+      {dots.map((d,i)=>(
+        <CircleMarker
+          key={i}
+          center={[d.lat,d.lon]}
+          radius={4}
+          pathOptions={{color:"yellow"}}
+        />
+      ))}
     </MapContainer>
   )
 }

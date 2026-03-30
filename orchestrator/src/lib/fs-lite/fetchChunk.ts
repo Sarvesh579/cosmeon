@@ -11,7 +11,7 @@ export async function fetchChunk(nodeId:string, chunkId:string, userLocation?:an
   await connectDB()
   const node=await Node.findOne({nodeId})
   if(!node) return null
-
+  
   if(userLocation && node.location){
     const d=distance(userLocation,node.location)
     const simulatedLatency=d*400

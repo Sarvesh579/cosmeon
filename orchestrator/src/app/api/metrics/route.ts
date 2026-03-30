@@ -1,6 +1,9 @@
 import {NextResponse} from "next/server"
 import {connectDB} from "@/lib/db"
 import CacheMetrics from "@/models/CacheMetrics"
+import {redistributeColdFiles} from "@/lib/cache/redistribute"
+
+await redistributeColdFiles()
 
 export async function GET(){
   await connectDB()

@@ -17,9 +17,22 @@ export default function DashboardMap(){
   useEffect(()=>{
     const userId=localStorage.getItem("userId")
     if(!userId)return
+
     fetch(`/api/visualization?userId=${userId}`)
       .then(r=>r.json())
-      .then(setData)
+      .then(data=>{
+        if(!data||!data.userLocation)return
+
+        setData(data)
+
+        localStorage.setItem("userLocation",JSON.stringify(data.userLocation))
+
+        const nodes=data.nodes
+          ?.filter((n:any)=>n.nodeId===data.l1||data.l2?.includes(n.nodeId))
+          ?.map((n:any)=>n.location)||[]
+
+        localStorage.setItem("cacheNodes",JSON.stringify(nodes))
+      })
   },[])
 
   if(!data){
