@@ -55,7 +55,7 @@ docker compose up -d
 ---
 
 ### 5. Start Mongoose
-in a new terminal
+in same terminal
 
 ```
 cd docker

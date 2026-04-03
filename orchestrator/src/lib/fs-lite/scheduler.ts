@@ -7,11 +7,11 @@ import { proofCheck } from "./proofCheck"
 export function startScheduler(){
   setInterval(async()=>{
     await monitorNodes()
-  }, 10000)
+  }, 5000)
 
   setInterval(async()=>{
     await adaptiveReplication()
-  }, 60000)
+  }, 15000)
 
   setInterval(async()=>{
     await selfHeal()

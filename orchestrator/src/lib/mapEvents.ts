@@ -1,7 +1,8 @@
 type MapEvent={
-  type:"upload"|"download"|"redistribute"
+  type:"upload"|"download"|"redistribute"|"replicate"|"evict"|"delete"
   from:{lat:number,lon:number}
   to:{lat:number,lon:number}[]
+  name?:string
 }
 
 type Listener=(e:MapEvent)=>void
@@ -14,5 +15,7 @@ export function emitMapEvent(e:MapEvent){
 
 export function subscribeMapEvents(l:Listener){
   listeners.add(l)
-  return ()=>listeners.delete(l)
+  return ()=>{
+    listeners.delete(l)
+  }
 }

@@ -26,12 +26,23 @@ export default function DashboardMap(){
         setData(data)
 
         localStorage.setItem("userLocation",JSON.stringify(data.userLocation))
+        
+        // Save ALL nodes for filtering later
+        const allNodeData = data.nodes.map((n:any) => ({
+          nodeId: n.nodeId,
+          location: n.location
+        }))
+        localStorage.setItem("allNodes", JSON.stringify(allNodeData))
 
-        const nodes=data.nodes
+        // Specifically save cache node IDs
+        localStorage.setItem("l1", data.l1 || "")
+        localStorage.setItem("l2", JSON.stringify(data.l2 || []))
+
+        const cacheNodes=data.nodes
           ?.filter((n:any)=>n.nodeId===data.l1||data.l2?.includes(n.nodeId))
           ?.map((n:any)=>n.location)||[]
 
-        localStorage.setItem("cacheNodes",JSON.stringify(nodes))
+        localStorage.setItem("cacheNodes",JSON.stringify(cacheNodes))
       })
   },[])
 

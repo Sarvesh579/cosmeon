@@ -2,58 +2,98 @@
 
 import useSWR from "swr"
 import { fetcher } from "@/lib/fetcher"
+import { motion } from "framer-motion"
 
-type Chunk = {
+interface Chunk {
   chunkId: string
   file: string
-  index: number
-  userId: string
+  node: string
 }
 
-export default function NodeChunks({ node }: { node: string }) {
-  const { data } = useSWR(
-    `/api/nodeChunks?node=${node}`,
-    url => fetch(url).then(r => r.json())
+export default function NodeChunks({ node, isL1, isL2 }: { node: string, isL1?: boolean, isL2?: boolean }) {
+  const { data } = useSWR(`/api/node/${node}/chunks`, fetcher, {
+    refreshInterval: 5000
+  })
+
+  // Theme colors
+  const accentColor = isL1 ? "#2dd4bf" : isL2 ? "#f97316" : "#f97316" // Default to orange for theme consistency but turquoise for L1
+  const badgeColor = isL1 ? "bg-[#2dd4bf]/20 text-[#2dd4bf] border-[#2dd4bf]/30" : isL2 ? "bg-[#f97316]/20 text-[#f97316] border-[#f97316]/30" : "bg-zinc-800/50 text-zinc-500 border-zinc-700/50"
+  const dotColor = isL1 ? "bg-[#2dd4bf]" : isL2 ? "bg-[#f97316]" : "bg-zinc-700"
+
+  if (!data) return (
+    <div className="h-48 glass-panel animate-pulse rounded-2xl flex items-center justify-center">
+      <div className="w-8 h-8 border-2 border-accent/20 border-t-accent rounded-full animate-spin"></div>
+    </div>
   )
-  if (!data) return null
 
   return (
-    <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5 shadow-sm hover:shadow-md transition">
+    <motion.div 
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      className="glass-panel rounded-2xl p-5 shadow-2xl hover:border-accent/40 transition-colors group"
+    >
       {/* Node Header */}
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="font-semibold text-lg text-white">{node}</h3>
-
-        <span className="text-xs px-2 py-1 rounded bg-green-500/10 text-green-400">
-          active
-        </span>
-      </div>
-
-      {/* Chunk List */}
-      <div className="max-h-52 overflow-y-auto space-y-2 pr-1">
-        {data.map((c) => (
-          <div
-            key={c.chunkId}
-            className="flex items-center justify-between bg-zinc-800/50 hover:bg-zinc-800 transition rounded-md px-3 py-2 text-sm"
-          >
-            <span className="font-medium text-white truncate">
-              {c.file}
-            </span>
-
-            <span className="text-xs px-2 py-1 rounded bg-blue-500/10 text-blue-400">
-              #{c.index}
-            </span>
-
-            <span className="text-xs text-zinc-400 font-mono">
-              {c.chunkId.slice(0, 8)}
+      <div className="flex flex-col mb-5">
+        <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest leading-none mb-2">Active Node</span>
+        <div className="flex items-center justify-between">
+          <h3 className="text-xl font-black text-white tracking-tighter uppercase">{node}</h3>
+          <div className={`flex items-center gap-2 px-3 py-1 rounded-full border ${badgeColor}`}>
+            <span className={`w-1.5 h-1.5 rounded-full ${isL1 || isL2 ? 'animate-pulse' : ''} ${dotColor}`}></span>
+            <span className="text-[9px] font-black uppercase tracking-widest">
+              {isL1 ? "Primary L1" : isL2 ? "Secondary L2" : "Storage"}
             </span>
           </div>
-        ))}
+        </div>
       </div>
 
-      {/* Footer */}
-      <div className="mt-3 text-xs text-zinc-500">
-        {data.length} chunks stored
+      <div className="space-y-6">
+        {/* Capacity / Distribution Visualizer */}
+        <div className="space-y-3">
+          <div className="flex justify-between items-end">
+            <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">Payload Distribution</span>
+            <span className="text-lg font-black text-white tracking-tighter">{data.length} CHUNKS</span>
+          </div>
+          
+          <div className="flex flex-wrap gap-1.5 min-h-[40px] p-3 bg-white/[0.02] rounded-xl border border-white/[0.03]">
+            {data.map((c: Chunk) => (
+              <div 
+                key={c.chunkId} 
+                className="w-3.5 h-3.5 rounded-sm bg-accent shadow-[0_0_10px_rgba(249,115,22,0.4)] group-hover:scale-125 transition-transform duration-500"
+                title={`${c.file} (${c.chunkId})`}
+              />
+            ))}
+            {data.length === 0 && (
+              <div className="w-full py-4 flex flex-col items-center justify-center opacity-20">
+                <span className="text-[9px] text-zinc-600 font-bold uppercase tracking-widest">Sector Vacuum</span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* List View (Scrollable) */}
+        <div className="max-h-48 overflow-y-auto space-y-2 pr-2 custom-scrollbar">
+          {data.map((c: Chunk, i: number) => (
+            <motion.div
+              key={c.chunkId}
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: i * 0.05 }}
+              className="flex items-center justify-between glass-card rounded-xl px-4 py-3 group/item border border-white/[0.02] hover:bg-white/[0.05] transition-colors"
+            >
+              <div className="flex flex-col min-w-0">
+                <span className="font-bold text-xs text-zinc-200 truncate group-hover/item:text-white leading-none mb-1">
+                  {c.file}
+                </span>
+                <span className="text-[9px] text-zinc-600 font-mono uppercase font-bold tracking-tighter">CHUNK ID: {c.chunkId.slice(0, 12)}</span>
+              </div>
+
+              <div className="flex gap-1">
+                <div className="w-1.5 h-1.5 rounded-full bg-accent/40" />
+              </div>
+            </motion.div>
+          ))}
+        </div>
       </div>
-    </div>
+    </motion.div>
   )
 }
