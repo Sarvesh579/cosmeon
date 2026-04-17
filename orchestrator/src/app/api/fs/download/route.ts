@@ -48,46 +48,63 @@ export async function GET(req:NextRequest){
     const victim=policy.chooseEviction(entries)
     await File.updateOne({_id:victim},{$set:{heatScore:0}})
   }
-  const sorted=file.chunks.sort((a:any,b:any)=>a.order-b.order)
-  const buffers:Buffer[]=[]
-  for(const chunk of sorted){
-    let data
-    let usedNode=null
-    let nodeDistance=0
-    const start=Date.now()
-    for(const nodeId of chunk.nodes){
-      try{
-        const node=await Node.findOne({nodeId})
-        data=await fetchChunk(nodeId,chunk.chunkId,user?.location)
-        if(data){
-          usedNode=nodeId
-          if(user?.location && node?.location){
-            nodeDistance=distance(user.location,node.location)
+  // Convert Mongoose DocumentArray to plain array before sorting
+  const chunksToProcess = [...file.chunks].sort((a:any, b:any) => a.order - b.order)
+  
+  const buffers: Buffer[] = []
+  
+  // Track metrics for the final summary instead of writing to DB for every single chunk
+  let totalLatency = 0
+  let avgDistance = 0
+  let usedNodeId = ""
+
+  for (const chunk of chunksToProcess) {
+    let data = null
+    const start = Date.now()
+    
+    for (const nodeId of chunk.nodes) {
+      try {
+        const node = await Node.findOne({ nodeId })
+        data = await fetchChunk(nodeId, chunk.chunkId, user?.location)
+        if (data) {
+          usedNodeId = nodeId
+          if (user?.location && node?.location) {
+            avgDistance += distance(user.location, node.location)
           }
           break
         }
-      }catch{}
+      } catch (err) {
+        console.error(`Error fetching chunk ${chunk.chunkId} from ${nodeId}:`, err)
+      }
     }
-    const latency=Date.now()-start
-    if(!data){
-      throw new Error("chunk unavailable")
+
+    totalLatency += (Date.now() - start)
+    
+    if (!data) {
+      return NextResponse.json({ error: `Chunk ${chunk.chunkId} is unavailable` }, { status: 500 })
     }
-    await CacheMetrics.create({
-      policy:policy.name,
-      fileId:file._id,
-      userId:file.userId,
-      nodeId:usedNode,
-      latency,
-      distance:nodeDistance,
-      hit:true
-    })
+    
     buffers.push(data)
   }
-  const fileBuffer=Buffer.concat(buffers)
-  return new NextResponse(fileBuffer,{
-    headers:{
-      "Content-Type":"application/octet-stream",
-      "Content-Disposition":`attachment; filename="${file.filename}"`
+
+  const fileBuffer = Buffer.concat(buffers)
+
+  // Save aggregate metrics in the background
+  CacheMetrics.create({
+    policy: policy.name,
+    fileId: file._id,
+    userId: file.userId,
+    nodeId: usedNodeId,
+    latency: totalLatency / chunksToProcess.length,
+    distance: avgDistance / chunksToProcess.length,
+    hit: true
+  }).catch(e => console.error("Metrics error:", e))
+
+  return new NextResponse(fileBuffer, {
+    headers: {
+      "Content-Type": "application/octet-stream",
+      "Content-Disposition": `attachment; filename="${file.filename}"`,
+      "Content-Length": fileBuffer.length.toString()
     }
   })
 }

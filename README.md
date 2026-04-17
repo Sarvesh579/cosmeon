@@ -47,7 +47,7 @@ docker run -d -p 27017:27017 --name cosmeon-mongo mongo
 
 ## Then Everytime do only the following steps
 ### 4. Start storage cluster
-in a new terminal 
+in a new terminal after ensuring Docker Desktop is active
 ```
 cd docker  
 docker compose up -d

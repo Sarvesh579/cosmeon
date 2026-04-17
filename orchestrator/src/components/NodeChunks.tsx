@@ -11,7 +11,7 @@ interface Chunk {
 }
 
 export default function NodeChunks({ node, isL1, isL2 }: { node: string, isL1?: boolean, isL2?: boolean }) {
-  const { data } = useSWR(`/api/node/${node}/chunks`, fetcher, {
+  const { data } = useSWR(`/api/nodeChunks?node=${node}`, fetcher, {
     refreshInterval: 5000
   })
 
@@ -27,7 +27,7 @@ export default function NodeChunks({ node, isL1, isL2 }: { node: string, isL1?: 
   )
 
   return (
-    <motion.div 
+    <motion.div
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
       className="glass-panel rounded-2xl p-5 shadow-2xl hover:border-accent/40 transition-colors group"
@@ -53,28 +53,13 @@ export default function NodeChunks({ node, isL1, isL2 }: { node: string, isL1?: 
             <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">Payload Distribution</span>
             <span className="text-lg font-black text-white tracking-tighter">{data.length} CHUNKS</span>
           </div>
-          
-          <div className="flex flex-wrap gap-1.5 min-h-[40px] p-3 bg-white/[0.02] rounded-xl border border-white/[0.03]">
-            {data.map((c: Chunk) => (
-              <div 
-                key={c.chunkId} 
-                className="w-3.5 h-3.5 rounded-sm bg-accent shadow-[0_0_10px_rgba(249,115,22,0.4)] group-hover:scale-125 transition-transform duration-500"
-                title={`${c.file} (${c.chunkId})`}
-              />
-            ))}
-            {data.length === 0 && (
-              <div className="w-full py-4 flex flex-col items-center justify-center opacity-20">
-                <span className="text-[9px] text-zinc-600 font-bold uppercase tracking-widest">Sector Vacuum</span>
-              </div>
-            )}
-          </div>
         </div>
 
         {/* List View (Scrollable) */}
         <div className="max-h-48 overflow-y-auto space-y-2 pr-2 custom-scrollbar">
           {data.map((c: Chunk, i: number) => (
             <motion.div
-              key={c.chunkId}
+              key={`${c.chunkId}-${c.file}-${i}`}
               initial={{ opacity: 0, x: -10 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: i * 0.05 }}
@@ -88,7 +73,7 @@ export default function NodeChunks({ node, isL1, isL2 }: { node: string, isL1?: 
               </div>
 
               <div className="flex gap-1">
-                <div className="w-1.5 h-1.5 rounded-full bg-accent/40" />
+                <div className="w-1.5 h-1.5 rounded-full bg-accent/100" />
               </div>
             </motion.div>
           ))}
