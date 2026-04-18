@@ -44,7 +44,7 @@ export default function ClusterView() {
       </div>
 
       {/* Nodes Grid */}
-      <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+      <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 auto-rows-fr">
         {data.nodes.map((node: any, i: number) => {
           const l1 = data.l1 === node.nodeId
           const l2 = data.l2?.includes(node.nodeId)

@@ -5,11 +5,12 @@ import {NextRequest,NextResponse} from "next/server"
 import {connectDB} from "@/lib/db"
 import File from "@/models/File"
 import {fetchChunk} from "@/lib/fs-lite/fetchChunk"
-import {policies} from "@/lib/cache/cacheManager"
+import {policies, CACHE_TTL} from "@/lib/cache/cacheManager"
 import CacheMetrics from "@/models/CacheMetrics"
 import User from "@/models/User"
 import Node from "@/models/Node"
 import {distance} from "@/lib/distance"
+import axios from "axios"
 
 const CACHE_LIMIT=20
 
@@ -36,7 +37,38 @@ export async function GET(req:NextRequest){
   if(file.accessCount>5){
     file.heatScore+=1
   }
+
+  // If the file is cold, warm it: replicate chunks into the L1 cache node
+  if(!file.isHot){
+    const cacheNodeId = user?.cacheLayout?.L1
+    if(cacheNodeId){
+      const cacheNode = await Node.findOne({nodeId: cacheNodeId})
+      if(cacheNode){
+        for(const chunk of file.chunks){
+          if(!chunk.nodes.includes(cacheNodeId)){
+            try{
+              const sourceId = chunk.nodes[0]
+              const data = await fetchChunk(sourceId, chunk.chunkId)
+              if(data){
+                await axios.put(`${cacheNode.url}/chunk/${chunk.chunkId}`, data, {
+                  headers:{"Content-Type":"application/octet-stream"}
+                })
+                chunk.nodes.push(cacheNodeId)
+              }
+            } catch(err){
+              console.error(`Cache warming failed for chunk ${chunk.chunkId}:`, err)
+            }
+          }
+        }
+      }
+    }
+    file.isHot = true
+  }
+
+  // Reset/extend the cache TTL on every access
+  file.cacheExpiresAt = new Date(Date.now() + CACHE_TTL)
   await file.save()
+
   const hotFiles=await File.find().sort({heatScore:-1}).limit(CACHE_LIMIT)
   if(hotFiles.length>=CACHE_LIMIT){
     const entries=hotFiles.map(f=>({

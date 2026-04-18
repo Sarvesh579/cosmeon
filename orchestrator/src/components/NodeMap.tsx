@@ -46,7 +46,7 @@ const createNodeIcon = (type: "normal" | "l1" | "l2") => {
   const color = type === "l1" ? "#2dd4bf" : type === "l2" ? "#f97316" : "#51515e"
   const glow = type === "l1" ? "rgba(45,212,191,0.5)" : type === "l2" ? "rgba(249,115,22,0.5)" : "rgba(39,39,42,0.3)"
   const stroke = type === "normal" ? "#3f3f46" : color
-  
+
   return L.divIcon({
     className: `custom-node-icon-${type}`,
     html: `<div class="relative w-8 h-8 flex items-center justify-center group">
@@ -62,7 +62,7 @@ const createNodeIcon = (type: "normal" | "l1" | "l2") => {
 
 export default function NodeMap({ nodes, userLocation, l1, l2 }: Props) {
   const [dots, setDots] = useState<Dot[]>([])
-  const [activeTransfers, setActiveTransfers] = useState<{name: string, type: string}[]>([])
+  const [activeTransfers, setActiveTransfers] = useState<{ name: string, type: string }[]>([])
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
@@ -72,7 +72,7 @@ export default function NodeMap({ nodes, userLocation, l1, l2 }: Props) {
   useEffect(() => {
     const unsub = subscribeMapEvents(e => {
       const targets = e.to
-      
+
       // Multi-packet "Stream" Logic
       const packetsPerTarget = 5
       const delayBetweenPackets = 150
@@ -132,8 +132,8 @@ export default function NodeMap({ nodes, userLocation, l1, l2 }: Props) {
           url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
         />
 
-        <Marker 
-          position={[userLocation.lat, userLocation.lon]} 
+        <Marker
+          position={[userLocation.lat, userLocation.lon]}
           icon={createUserIcon()}
           zIndexOffset={1000}
         >
@@ -166,49 +166,74 @@ export default function NodeMap({ nodes, userLocation, l1, l2 }: Props) {
           )
         })}
 
-        {dots.map((d) => {
-          let color = "#f97316" // orange for upload
-          if (d.type === "download") color = "#8b5cf6" // violet
-          if (d.type === "replicate") color = "#fbbf24" // amber
-          if (d.type === "evict") color = "#ef4444" // red
-          if (d.type === "delete") color = "#b91c1c" // dark red
+        {dots
+          .filter(d =>
+            d?.start?.lat && d?.start?.lon &&
+            d?.target?.lat && d?.target?.lon
+          )
+          .map((d) => {
+            let color = "#f97316" // orange for upload
+            if (d.type === "download") color = "#8b5cf6" // violet
+            if (d.type === "replicate") color = "#fbbf24" // amber
+            if (d.type === "evict") color = "#ef4444" // red
+            if (d.type === "delete") color = "#b91c1c" // dark red
+            if (d.type === "cooldown") color = "#60a5fa" // ice blue
 
-          // Linear Interp for packets
-          const currentLat = d.start.lat + (d.target.lat - d.start.lat) * d.progress
-          const currentLon = d.start.lon + (d.target.lon - d.start.lon) * d.progress
+            // Linear Interp for packets
+            if (!d.start?.lat || !d.start?.lon || !d.target?.lat || !d.target?.lon) return null
+            const currentLat = d.start.lat + (d.target.lat - d.start.lat) * d.progress
+            const currentLon = d.start.lon + (d.target.lon - d.start.lon) * d.progress
 
-          // For delete, we show a pulse at the location
-          if (d.type === "delete") {
+            // For delete, we show a pulse at the location
+            if (d.type === "delete") {
+              return (
+                <CircleMarker
+                  key={d.id}
+                  center={[currentLat, currentLon]}
+                  radius={10 + d.progress * 30}
+                  pathOptions={{
+                    color,
+                    fill: false,
+                    opacity: 1 - d.progress,
+                    weight: 2
+                  }}
+                />
+              )
+            }
+
+            // Cooldown: icy expanding ring that fades as it travels cache → storage
+            if (d.type === "cooldown") {
+              return (
+                <CircleMarker
+                  key={d.id}
+                  center={[currentLat, currentLon]}
+                  radius={6 + d.progress * 10}
+                  pathOptions={{
+                    color,
+                    fillColor: color,
+                    fillOpacity: (1 - d.progress) * 0.35,
+                    opacity: 1 - d.progress * 0.6,
+                    weight: 2.5
+                  }}
+                />
+              )
+            }
+
             return (
               <CircleMarker
                 key={d.id}
                 center={[currentLat, currentLon]}
-                radius={10 + d.progress * 30}
+                radius={d.type === "download" ? 7 : 4 + d.progress * 4}
                 pathOptions={{
                   color,
-                  fill: false,
-                  opacity: 1 - d.progress,
-                  weight: 2
+                  fillColor: color,
+                  fillOpacity: 1 - d.progress,
+                  weight: d.type === "download" ? 3 : 2,
+                  className: d.type === "download" ? "glow-download" : d.type === "upload" ? "glow-upload" : ""
                 }}
               />
             )
-          }
-
-          return (
-            <CircleMarker
-              key={d.id}
-              center={[currentLat, currentLon]}
-              radius={d.type === "download" ? 7 : 4 + d.progress * 4}
-              pathOptions={{
-                color,
-                fillColor: color,
-                fillOpacity: 1 - d.progress,
-                weight: d.type === "download" ? 3 : 2,
-                className: d.type === "download" ? "glow-download" : d.type === "upload" ? "glow-upload" : ""
-              }}
-            />
-          )
-        })}
+          })}
       </MapContainer>
 
       {/* Overlay UI */}
@@ -217,7 +242,7 @@ export default function NodeMap({ nodes, userLocation, l1, l2 }: Props) {
           <div className="w-2 h-2 rounded-full bg-accent animate-pulse"></div>
           <span className="text-xs font-mono tracking-wider text-zinc-300">CLUSTER STATUS: NOMINAL</span>
         </div>
-        
+
         <AnimatePresence>
           {activeTransfers.map((t, i) => (
             <motion.div
@@ -225,9 +250,19 @@ export default function NodeMap({ nodes, userLocation, l1, l2 }: Props) {
               initial={{ opacity: 0, x: -20, filter: "blur(4px)" }}
               animate={{ opacity: 1, x: 0, filter: "blur(0px)" }}
               exit={{ opacity: 0, x: 20, filter: "blur(4px)" }}
-              className="px-4 py-3 glass-card rounded-xl flex flex-col border-l-4 border-l-accent shadow-xl"
+              className={`px-4 py-3 glass-card rounded-xl flex flex-col border-l-4 shadow-xl ${
+                t.type === "cooldown" ? "border-l-blue-400" :
+                t.type === "download" ? "border-l-violet-500" :
+                t.type === "delete" ? "border-l-red-600" :
+                "border-l-accent"
+              }`}
             >
-              <span className="text-[10px] text-accent uppercase font-black tracking-widest">{t.type}</span>
+              <span className={`text-[10px] uppercase font-black tracking-widest ${
+                t.type === "cooldown" ? "text-blue-400" :
+                t.type === "download" ? "text-violet-400" :
+                t.type === "delete" ? "text-red-500" :
+                "text-accent"
+              }`}>{t.type === "cooldown" ? "❄ COOLING" : t.type}</span>
               <span className="text-xs text-white font-medium truncate max-w-[180px]">{t.name}</span>
             </motion.div>
           ))}
@@ -240,6 +275,7 @@ export default function NodeMap({ nodes, userLocation, l1, l2 }: Props) {
         <div className="flex items-center gap-3"><div className="w-3 h-3 bg-white/10 border border-white/20 rounded-sm"></div> STORAGE NODE</div>
         <div className="flex items-center gap-3"><div className="w-3 h-3 bg-accent rounded-full animate-pulse"></div> UPLOAD STREAM</div>
         <div className="flex items-center gap-3"><div className="w-3 h-3 bg-violet-500 rounded-full animate-pulse"></div> DOWNLOAD STREAM</div>
+        <div className="flex items-center gap-3"><div className="w-3 h-3 bg-blue-400 rounded-full animate-pulse"></div> COOLING (HOT→COLD)</div>
       </div>
     </div>
   )

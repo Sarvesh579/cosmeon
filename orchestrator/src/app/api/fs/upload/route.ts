@@ -5,7 +5,7 @@ import {sendChunkReplicated} from "@/lib/fs-lite/distribute"
 import {buildMerkleRoot} from "@/lib/fs-lite/merkle"
 import {connectDB} from "@/lib/db"
 import File from "@/models/File"
-import { CACHE_TTL } from "@/lib/cache/cacheManager"
+
 
 export async function POST(req:NextRequest){
   await connectDB()
@@ -60,8 +60,7 @@ export async function POST(req:NextRequest){
     size:buffer.length,
     rootHash,
     chunks:chunkMeta,
-    cacheExpiresAt:new Date(Date.now()+CACHE_TTL),
-    isHot:true
+    isHot:false
   })
 
   return NextResponse.json({

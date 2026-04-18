@@ -3,52 +3,76 @@ import useSWR from "swr"
 import { useRef, useState, useEffect, DragEvent } from "react"
 import { emitMapEvent } from "@/lib/mapEvents"
 
-import { Folder, FileText, Upload, Plus, LogOut, ChevronLeft, Trash2, Edit2, Download, Loader2, CheckCircle2 } from "lucide-react"
+import { Folder, FileText, Upload, Plus, LogOut, ChevronLeft, Trash2, Edit2, Download, Loader2, CheckCircle2, Flame, Snowflake } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
+
+/** Shows a flame icon + live countdown until the file goes cold */
+function HotBadge({ cacheExpiresAt }: { cacheExpiresAt: string | null }) {
+  const [secsLeft, setSecsLeft] = useState<number | null>(null)
+
+  useEffect(() => {
+    if (!cacheExpiresAt) return
+    const update = () => {
+      const diff = Math.max(0, Math.floor((new Date(cacheExpiresAt).getTime() - Date.now()) / 1000))
+      setSecsLeft(diff)
+    }
+    update()
+    const id = setInterval(update, 1000)
+    return () => clearInterval(id)
+  }, [cacheExpiresAt])
+
+  return (
+    <span className="flex items-center gap-1 text-[9px] text-amber-400 font-black tracking-widest uppercase">
+      <Flame size={9} className="animate-pulse" />
+      HOT{/*secsLeft !== null ? ` · ${secsLeft}s` : ""*/}
+    </span>
+  )
+}
+
 
 export default function FileExplorer() {
   const input = useRef<HTMLInputElement>(null)
   const [currentFolder, setCurrentFolder] = useState("/")
-  const [userId,setUserId]=useState<string | null>(null)
-  const [username,setUsername]=useState<string | null>(null)
-  const [dragging,setDragging]=useState(false)
+  const [userId, setUserId] = useState<string | null>(null)
+  const [username, setUsername] = useState<string | null>(null)
+  const [dragging, setDragging] = useState(false)
   const [uploadStatus, setUploadStatus] = useState<null | "started" | "processing" | "success">(null)
   const [latestFileName, setLatestFileName] = useState("")
 
-  useEffect(()=>{
+  useEffect(() => {
     setUserId(localStorage.getItem("userId"))
     setUsername(localStorage.getItem("username"))
-  },[])
+  }, [])
 
   const { data, mutate } = useSWR(
     userId ? `/api/files?folder=${currentFolder}` : null,
-    (url:string)=>
-      fetch(url,{
-        headers:{ "x-user":userId ?? "" }
-      }).then(r=>r.json())
+    (url: string) =>
+      fetch(url, {
+        headers: { "x-user": userId ?? "" }
+      }).then(r => r.json())
   )
 
   const { data: folders } = useSWR(
     userId ? "/api/folders" : null,
-    (url:string)=>
-      fetch(url,{
-        headers:{ "x-user":userId ?? "" }
-      }).then(r=>r.json())
+    (url: string) =>
+      fetch(url, {
+        headers: { "x-user": userId ?? "" }
+      }).then(r => r.json())
   )
 
   async function createFolder() {
     const name = prompt("Folder name")
     if (!name) return
 
-    await fetch("/api/folders",{
-      method:"POST",
-      headers:{
-        "Content-Type":"application/json",
-        "x-user":userId ?? ""
+    await fetch("/api/folders", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-user": userId ?? ""
       },
-      body:JSON.stringify({
+      body: JSON.stringify({
         name,
-        parent:currentFolder
+        parent: currentFolder
       })
     })
     mutate()
@@ -79,9 +103,9 @@ export default function FileExplorer() {
 
   async function remove(id: string) {
     if (!confirm("Delete this file?")) return
-    
+
     // Find the file to get its nodes for animation
-    const file = data?.find((f:any) => f.id === id)
+    const file = data?.find((f: any) => f.id === id)
     if (file) {
       const nodes = JSON.parse(localStorage.getItem("cacheNodes") || "[]")
       if (nodes.length > 0) {
@@ -114,7 +138,7 @@ export default function FileExplorer() {
   async function uploadFile(file: File) {
     setLatestFileName(file.name)
     setUploadStatus("started")
-    
+
     const buffer = await file.arrayBuffer()
     setUploadStatus("processing")
 
@@ -123,26 +147,26 @@ export default function FileExplorer() {
       headers: {
         "x-filename": file.name,
         "x-folder": currentFolder,
-        "x-user":localStorage.getItem("userId") ?? ""
+        "x-user": localStorage.getItem("userId") ?? ""
       },
       body: buffer
     })
-    
+
     setUploadStatus("success")
     setTimeout(() => setUploadStatus(null), 4000)
-    
+
     mutate()
-    
+
     const user = JSON.parse(localStorage.getItem("userLocation") || "null")
     const allNodes = JSON.parse(localStorage.getItem("allNodes") || "[]")
     const l1 = localStorage.getItem("l1")
     const l2 = JSON.parse(localStorage.getItem("l2") || "[]")
 
-    if(user && allNodes.length > 0){
+    if (user && allNodes.length > 0) {
       // STRICT FILTER: Only show initial upload stream going to GREY (Storage) nodes
       const storageNodeLocations = allNodes
-        .filter((n:any) => n.nodeId !== l1 && !l2.includes(n.nodeId))
-        .map((n:any) => n.location)
+        .filter((n: any) => n.nodeId !== l1 && !l2.includes(n.nodeId))
+        .map((n: any) => n.location)
 
       if (storageNodeLocations.length > 0) {
         emitMapEvent({
@@ -155,26 +179,26 @@ export default function FileExplorer() {
     }
   }
 
-  function handleDrop(e:DragEvent<HTMLDivElement>){
+  function handleDrop(e: DragEvent<HTMLDivElement>) {
     e.preventDefault()
     setDragging(false)
 
-    const files=e.dataTransfer.files
-    if(!files.length) return
+    const files = e.dataTransfer.files
+    if (!files.length) return
 
     Array.from(files).forEach(f => uploadFile(f as File))
   }
 
-  function handleDragOver(e:DragEvent<HTMLDivElement>){
+  function handleDragOver(e: DragEvent<HTMLDivElement>) {
     e.preventDefault()
   }
 
-  function handleDragEnter(e:DragEvent<HTMLDivElement>){
+  function handleDragEnter(e: DragEvent<HTMLDivElement>) {
     e.preventDefault()
     setDragging(true)
   }
 
-  function handleDragLeave(e:DragEvent<HTMLDivElement>){
+  function handleDragLeave(e: DragEvent<HTMLDivElement>) {
     e.preventDefault()
     setDragging(false)
   }
@@ -213,9 +237,9 @@ export default function FileExplorer() {
               </div>
               <div className="flex-1">
                 <p className="text-[10px] font-black text-accent uppercase tracking-[0.2em] mb-0.5">
-                   {uploadStatus === "started" && "Scanning Sector"}
-                   {uploadStatus === "processing" && "Injecting Chunks"}
-                   {uploadStatus === "success" && "Transmission Ready"}
+                  {uploadStatus === "started" && "Scanning Sector"}
+                  {uploadStatus === "processing" && "Injecting Chunks"}
+                  {uploadStatus === "success" && "Transmission Ready"}
                 </p>
                 <p className="text-sm text-white font-bold truncate max-w-[200px]">{latestFileName}</p>
               </div>
@@ -348,9 +372,16 @@ export default function FileExplorer() {
                   <div>
                     <p className="font-bold text-zinc-100 group-hover:text-white transition-colors leading-none mb-1.5">{f.name}</p>
                     <div className="flex items-center gap-2">
-                       <p className="text-[9px] text-zinc-500 font-black tracking-widest uppercase bg-white/5 px-2 py-0.5 rounded-md">{f.chunks} CHUNKS</p>
-                       <span className="w-1 h-1 rounded-full bg-zinc-700" />
-                       <p className="text-[9px] text-zinc-500 font-black tracking-widest uppercase">DISTRIBUTED</p>
+                      <p className="text-[9px] text-zinc-500 font-black tracking-widest uppercase bg-white/5 px-2 py-0.5 rounded-md">{f.chunks} CHUNKS</p>
+                      <span className="w-1 h-1 rounded-full bg-zinc-700" />
+                      {f.isHot ? (
+                        <HotBadge cacheExpiresAt={f.cacheExpiresAt} />
+                      ) : (
+                        <span className="flex items-center gap-1 text-[9px] text-blue-400/60 font-black tracking-widest uppercase">
+                          <Snowflake size={9} />
+                          COLD
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -360,14 +391,50 @@ export default function FileExplorer() {
                     onClick={() => {
                       const user = JSON.parse(localStorage.getItem("userLocation") || "null")
                       const cacheNodes = JSON.parse(localStorage.getItem("cacheNodes") || "[]")
-                      
-                      if (user && cacheNodes.length > 0) {
-                        // STREAM DIRECTIVE: Trigger animation FROM cache hubs TO user
-                        emitMapEvent({ 
-                          type: "download", 
-                          from: cacheNodes[0], // source: L1 Cache Location
-                          to: [user], 
-                          name: f.name 
+                      const allNodes = JSON.parse(localStorage.getItem("allNodes") || "[]")
+
+                      if (!user || !cacheNodes.length || !allNodes.length) return
+
+                      const l1 = cacheNodes[0]
+
+                      const nonCache = allNodes.find((n: any) =>
+                        n?.location?.lat && n?.location?.lon &&
+                        !cacheNodes.some((c: any) => c.lat === n.location.lat && c.lon === n.location.lon)
+                      )
+
+                      if (f.isHot) {
+                        emitMapEvent({
+                          type: "download",
+                          from: l1,
+                          to: [user],
+                          name: f.name + " (Cache Hit)"
+                        })
+                      } else if (nonCache && nonCache.location) {
+                        // stage 1: origin → cache
+                        emitMapEvent({
+                          type: "download",
+                          from: nonCache.location,
+                          to: [l1],
+                          name: f.name + " (Storage → Cache)"
+                        })
+
+                        // stage 2: cache → user
+                        // We set a 1200ms delay to give stage 1 time to animate into the cache node clearly
+                        setTimeout(() => {
+                          emitMapEvent({
+                            type: "download",
+                            from: l1,
+                            to: [user],
+                            name: f.name + " (Cache → User)"
+                          })
+                        }, 2200)
+                      } else {
+                        // fallback
+                        emitMapEvent({
+                          type: "download",
+                          from: l1,
+                          to: [user],
+                          name: f.name
                         })
                       }
                     }}

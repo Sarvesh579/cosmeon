@@ -30,7 +30,7 @@ export default function NodeChunks({ node, isL1, isL2 }: { node: string, isL1?: 
     <motion.div
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
-      className="glass-panel rounded-2xl p-5 shadow-2xl hover:border-accent/40 transition-colors group"
+      className="glass-panel rounded-2xl p-5 shadow-2xl hover:border-accent/40 transition-colors group "
     >
       {/* Node Header */}
       <div className="flex flex-col mb-5">
@@ -63,7 +63,7 @@ export default function NodeChunks({ node, isL1, isL2 }: { node: string, isL1?: 
               initial={{ opacity: 0, x: -10 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: i * 0.05 }}
-              className="flex items-center justify-between glass-card rounded-xl px-4 py-3 group/item border border-white/[0.02] hover:bg-white/[0.05] transition-colors"
+              className="flex items-center h-full justify-between glass-card rounded-xl px-4 py-3 group/item border border-white/[0.02] hover:bg-white/[0.05] transition-colors"
             >
               <div className="flex flex-col min-w-0">
                 <span className="font-bold text-xs text-zinc-200 truncate group-hover/item:text-white leading-none mb-1">

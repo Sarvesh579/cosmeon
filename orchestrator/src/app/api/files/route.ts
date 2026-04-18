@@ -11,7 +11,9 @@ export async function GET(req: NextRequest) {
     id: f._id,
     name: f.filename,
     size: f.size,
-    chunks: f.chunks.length
+    chunks: f.chunks.length,
+    isHot: f.isHot,
+    cacheExpiresAt: f.cacheExpiresAt ?? null
   }))
 
   return NextResponse.json(result)
