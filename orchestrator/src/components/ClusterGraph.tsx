@@ -9,22 +9,22 @@ const ForceGraph2D = dynamic(
   { ssr: false }
 )
 
-export default function ClusterGraph(){
-  const { data } = useSWR("/api/cluster", fetcher,{
-    refreshInterval:5000
+export default function clusterGraph() {
+  const { data } = useSWR("/api/cluster", fetcher, {
+    refreshInterval: 5000
   })
-  const [selected,setSelected] = useState<any>(null)
-  if(!data) return <div>Loading...</div>
-  const nodes = data.nodes.map((n:any)=>({
-    id:n.nodeId
+  const [selected, setSelected] = useState<any>(null)
+  if (!data) return <div>Loading...</div>
+  const nodes = data.nodes.map((n: any) => ({
+    id: n.nodeId
   }))
 
   const graph = {
     nodes,
-    links:[]
+    links: []
   }
 
-  return(
+  return (
     <div className="h-full">
       <ForceGraph2D
         graphData={graph}

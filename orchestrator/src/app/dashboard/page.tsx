@@ -36,7 +36,7 @@ export default function Dashboard() {
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
               </div>
               <div>
-                <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest leading-none mb-1">Cluster Engine</p>
+                <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest leading-none mb-1">cluster Engine</p>
                 <p className="text-sm font-bold text-white uppercase tracking-tight">Status: Operational</p>
               </div>
             </div>

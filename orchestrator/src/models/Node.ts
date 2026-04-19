@@ -8,6 +8,7 @@ const NodeSchema = new mongoose.Schema({
   used: Number,
   latency: Number,
   healthy: Boolean,
+  manualFailure: { type: Boolean, default: false },
   lastSeen: Date,
   location: {
     lat:{ type:Number },

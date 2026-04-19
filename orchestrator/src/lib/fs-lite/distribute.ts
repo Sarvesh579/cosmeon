@@ -30,6 +30,7 @@ export async function sendChunkReplicated(
     await axios.put(`${node.url}/chunk/${chunkId}`,chunk,{
       headers:{"Content-Type":"application/octet-stream"}
     })
+    await Node.updateOne({ nodeId: node.nodeId }, { $inc: { used: chunk.length } })
     selected.push(node.nodeId)
   }
 

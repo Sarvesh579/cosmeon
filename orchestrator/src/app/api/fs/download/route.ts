@@ -11,10 +11,12 @@ import User from "@/models/User"
 import Node from "@/models/Node"
 import {distance} from "@/lib/distance"
 import axios from "axios"
+import { logEvent } from "@/lib/analytics"
 
 const CACHE_LIMIT=20
 
 export async function GET(req:NextRequest){
+  const startTime = Date.now()
   await connectDB()
   const id=req.nextUrl.searchParams.get("id")
   if(!id){
@@ -53,6 +55,7 @@ export async function GET(req:NextRequest){
                 await axios.put(`${cacheNode.url}/chunk/${chunk.chunkId}`, data, {
                   headers:{"Content-Type":"application/octet-stream"}
                 })
+                await Node.updateOne({ nodeId: cacheNodeId }, { $inc: { used: data.length } })
                 chunk.nodes.push(cacheNodeId)
               }
             } catch(err){
@@ -63,6 +66,14 @@ export async function GET(req:NextRequest){
       }
     }
     file.isHot = true
+    logEvent({
+      type: "heat",
+      fileId: file._id.toString(),
+      filename: file.filename,
+      userId: file.userId,
+      size: file.size,
+      latency: Date.now() - startTime // Approximate heat latency
+    })
   }
 
   // Reset/extend the cache TTL on every access
@@ -131,6 +142,19 @@ export async function GET(req:NextRequest){
     distance: avgDistance / chunksToProcess.length,
     hit: true
   }).catch(e => console.error("Metrics error:", e))
+
+  const totalTime = Date.now() - startTime
+  const downloadSpeed = fileBuffer.length / (totalTime / 1000)
+
+  logEvent({
+    type: "download",
+    fileId: file._id.toString(),
+    filename: file.filename,
+    userId: file.userId,
+    size: fileBuffer.length,
+    latency: totalTime,
+    speed: downloadSpeed
+  })
 
   return new NextResponse(fileBuffer, {
     headers: {

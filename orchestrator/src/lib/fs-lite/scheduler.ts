@@ -1,33 +1,20 @@
 import { adaptiveReplication } from "./adaptiveReplication"
-import { selfHeal } from "./selfHeal"
 import { monitorNodes } from "./nodeHealth"
-import { handleNodeFailures } from "./failureHandler"
-import { proofCheck } from "./proofCheck"
 import { redistributeColdFiles } from "@/lib/cache/redistribute"
 
 export function startScheduler(){
+  // Monitor nodes every 5s (Respects manualFailure)
   setInterval(async()=>{
     await monitorNodes()
   }, 5000)
 
+  // Adaptive Replication every 15s (Self-heals and balances)
   setInterval(async()=>{
     await adaptiveReplication()
   }, 15000)
 
-  setInterval(async()=>{
-    await selfHeal()
-  }, 45000)
-
-  setInterval(async()=>{
-    await handleNodeFailures()
-  }, 30000)
-
-  setInterval(async()=>{
-    await proofCheck()
-  }, 90000)
-
-  // Every 30s: cool down files whose cache TTL (120s) has expired
+  // Every 30s: cool down files whose cache TTL has expired
   setInterval(async()=>{
     await redistributeColdFiles()
   }, 30000)
-}
+}

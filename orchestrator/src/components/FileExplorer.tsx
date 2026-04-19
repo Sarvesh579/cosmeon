@@ -3,8 +3,9 @@ import useSWR from "swr"
 import { useRef, useState, useEffect, DragEvent } from "react"
 import { emitMapEvent } from "@/lib/mapEvents"
 
-import { Folder, FileText, Upload, Plus, LogOut, ChevronLeft, Trash2, Edit2, Download, Loader2, CheckCircle2, Flame, Snowflake } from "lucide-react"
+import { Folder, FileText, Upload, Plus, LogOut, ChevronLeft, Trash2, Edit2, Download, Loader2, CheckCircle2, Flame, Snowflake, BarChart3, Cpu } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
+import { useRouter } from "next/navigation"
 
 /** Shows a flame icon + live countdown until the file goes cold */
 function HotBadge({ cacheExpiresAt }: { cacheExpiresAt: string | null }) {
@@ -30,6 +31,7 @@ function HotBadge({ cacheExpiresAt }: { cacheExpiresAt: string | null }) {
 }
 
 export default function FileExplorer() {
+  const router = useRouter()
   const input = useRef<HTMLInputElement>(null)
   const [currentFolder, setCurrentFolder] = useState("/")
   const [userId, setUserId] = useState<string | null>(null)
@@ -162,16 +164,16 @@ export default function FileExplorer() {
     const l2 = JSON.parse(localStorage.getItem("l2") || "[]")
 
     if (user && allNodes.length > 0) {
-      // STRICT FILTER: Only show initial upload stream going to GREY (Storage) nodes
-      const storageNodeLocations = allNodes
-        .filter((n: any) => n.nodeId !== l1 && !l2.includes(n.nodeId))
-        .map((n: any) => n.location)
+      // Pick 3 random storage nodes to match the actual replica count (3)
+      const storageNodes = allNodes.filter((n: any) => n.nodeId !== l1 && !l2.includes(n.nodeId))
+      const shuffled = [...storageNodes].sort(() => Math.random() - 0.5)
+      const targetLocations = shuffled.slice(0, 3).map((n: any) => n.location)
 
-      if (storageNodeLocations.length > 0) {
+      if (targetLocations.length > 0) {
         emitMapEvent({
           type: "upload",
           from: user,
-          to: storageNodeLocations,
+          to: targetLocations,
           name: file.name
         })
       }
@@ -259,6 +261,21 @@ export default function FileExplorer() {
             <p className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest">Operator</p>
             <p className="text-sm text-white font-bold tracking-tight">{username}</p>
           </div>
+          <button
+            onClick={() => router.push("/cluster")}
+            className="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500 hover:text-zinc-950 transition-all shadow-lg shadow-emerald-500/5"
+            title="cluster"
+          >
+            <Cpu size={18} />
+          </button>
+          <button
+            onClick={() => router.push("/analytics")}
+            className="p-2.5 rounded-xl bg-accent/10 text-accent hover:bg-accent hover:text-zinc-950 transition-all shadow-lg shadow-accent/5"
+            title="Analytics"
+          >
+            <BarChart3 size={18} />
+          </button>
+
           <button
             onClick={() => {
               localStorage.removeItem("userId")
@@ -394,44 +411,58 @@ export default function FileExplorer() {
 
                       if (!user || !cacheNodes.length || !allNodes.length) return
 
-                      const l1 = cacheNodes[0]
+                      const l2Location = cacheNodes[1]
 
                       const nonCache = allNodes.find((n: any) =>
                         n?.location?.lat && n?.location?.lon &&
                         !cacheNodes.some((c: any) => c.lat === n.location.lat && c.lon === n.location.lon)
                       )
 
+                      const l2Id = JSON.parse(localStorage.getItem("l2") || "[]")[0] || ""
+                      const l1Id = localStorage.getItem("l1") || ""
+
+                      // Check if data is already in one of the cache nodes
+                      const cacheSourceId = f.storageNodes?.find((id: string) => id === l1Id || id === l2Id)
+                      const cacheSource = allNodes.find((n: any) => n.nodeId === cacheSourceId)
+                      
+                      // For cold files, pick a storage source
+                      const storageSourceId = f.storageNodes?.find((id: string) => id !== l1Id && id !== l2Id)
+                      const storageSource = allNodes.find((n: any) => n.nodeId === storageSourceId)
+                      
+                      const sourceLocation = (f.isHot && cacheSource) ? cacheSource.location : (storageSource?.location || nonCache?.location)
+
                       if (f.isHot) {
+                        // HOT: Direct from the CACHE node (where it actually exists) to user
                         emitMapEvent({
                           type: "download",
-                          from: l1,
+                          from: sourceLocation || l2Location,
                           to: [user],
                           name: f.name + " (Cache Hit)"
                         })
-                      } else if (nonCache && nonCache.location) {
-                        // stage 1: origin → cache
+                      } else if (sourceLocation) {
+                        // COLD: Two-stage animation to reflect "Warming" process
+                        // 1. Fetch from the specific storage orbit to the Cache
                         emitMapEvent({
                           type: "download",
-                          from: nonCache.location,
-                          to: [l1],
+                          from: sourceLocation,
+                          to: [l2Location],
                           name: f.name + " (Storage → Cache)"
                         })
 
-                        // stage 2: cache → user
-                        // We set a 1200ms delay to give stage 1 time to animate into the cache node clearly
+                        // 2. Stream from Cache to the user after warming
                         setTimeout(() => {
                           emitMapEvent({
                             type: "download",
-                            from: l1,
+                            from: l2Location,
                             to: [user],
                             name: f.name + " (Cache → User)"
                           })
-                        }, 2200)
+                        }, 2300) 
                       } else {
-                        // fallback
+                        // FALLBACK
                         emitMapEvent({
                           type: "download",
-                          from: l1,
+                          from: l2Location,
                           to: [user],
                           name: f.name
                         })

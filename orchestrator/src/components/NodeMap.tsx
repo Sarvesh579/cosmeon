@@ -12,6 +12,7 @@ type Node = {
     lat: number
     lon: number
   }
+  healthy?: boolean
 }
 
 type Dot = {
@@ -42,14 +43,21 @@ const createUserIcon = () => L.divIcon({
   iconAnchor: [20, 20]
 })
 
-const createNodeIcon = (type: "normal" | "l1" | "l2") => {
-  const color = type === "l1" ? "#2dd4bf" : type === "l2" ? "#f97316" : "#51515e"
-  const glow = type === "l1" ? "rgba(45,212,191,0.5)" : type === "l2" ? "rgba(249,115,22,0.5)" : "rgba(39,39,42,0.3)"
+const createNodeIcon = (type: "normal" | "l1" | "l2" | "failed") => {
+  let color = type === "l1" ? "#2dd4bf" : type === "l2" ? "#f97316" : "#8a8a9a"
+  let glow = type === "l1" ? "rgba(45,212,191,0.5)" : type === "l2" ? "rgba(249,115,22,0.5)" : "rgba(39,39,42,0.3)"
+
+  if (type === "failed") {
+    color = "#ef4444" // red
+    glow = "rgba(239,68,68,0.7)"
+  }
+
   const stroke = type === "normal" ? "#3f3f46" : color
 
   return L.divIcon({
     className: `custom-node-icon-${type}`,
     html: `<div class="relative w-8 h-8 flex items-center justify-center group">
+      <div class="absolute inset-0 bg-${type === "failed" ? "red-500" : "zinc-500"}/20 rounded-full blur-lg ${type === 'failed' ? 'animate-pulse' : ''}"></div>
       <svg viewBox="0 0 100 100" class="w-6 h-6 drop-shadow-[0_0_8px_${glow}]">
         <path d="M50 5 L90 27.5 L90 72.5 L50 95 L10 72.5 L10 27.5 Z" fill="${color}" fill-opacity="${type === "normal" ? "0.1" : "0.2"}" stroke="${stroke}" stroke-width="8" />
         <path d="M50 25 L75 40 L75 60 L50 75 L25 60 L25 40 Z" fill="${color}" class="${type !== "normal" ? "animate-pulse" : ""}" />
@@ -141,8 +149,9 @@ export default function NodeMap({ nodes, userLocation, l1, l2 }: Props) {
         </Marker>
 
         {nodes.map((node) => {
-          let nodeType: "normal" | "l1" | "l2" = "normal"
-          if (node.nodeId === l1) nodeType = "l1"
+          let nodeType: "normal" | "l1" | "l2" | "failed" = "normal"
+          if (node.healthy === false) nodeType = "failed"
+          else if (node.nodeId === l1) nodeType = "l1"
           else if (l2?.includes(node.nodeId)) nodeType = "l2"
 
           return (
@@ -153,13 +162,11 @@ export default function NodeMap({ nodes, userLocation, l1, l2 }: Props) {
             >
               <Popup>
                 <div className="p-1">
-                  <h3 className="font-bold text-accent">{node.nodeId}</h3>
+                  <h3 className={`font-bold ${nodeType === 'failed' ? 'text-red-500' : 'text-accent'}`}>{node.nodeId}</h3>
                   <p className="text-xs text-zinc-400">Rack: {node.rack}</p>
-                  {nodeType !== "normal" && (
-                    <span className={`text-[10px] uppercase font-bold text-accent`}>
-                      {nodeType} Cache Active
-                    </span>
-                  )}
+                  <p className={`text-[10px] uppercase font-bold ${nodeType === 'failed' ? 'text-red-500' : 'text-accent'}`}>
+                    {nodeType === 'failed' ? "NODE OFFLINE" : nodeType !== "normal" ? `${nodeType} Cache Active` : "Storage Node Operational"}
+                  </p>
                 </div>
               </Popup>
             </Marker>
@@ -239,8 +246,10 @@ export default function NodeMap({ nodes, userLocation, l1, l2 }: Props) {
       {/* Overlay UI */}
       <div className="absolute top-4 left-4 z-[1000] flex flex-col gap-2 pointer-events-none">
         <div className="px-4 py-2 glass-card rounded-full flex items-center gap-3">
-          <div className="w-2 h-2 rounded-full bg-accent animate-pulse"></div>
-          <span className="text-xs font-mono tracking-wider text-zinc-300">CLUSTER STATUS: NOMINAL</span>
+          <div className={`w-2 h-2 rounded-full ${nodes.some(n => n.healthy === false) ? 'bg-red-500 animate-pulse' : 'bg-accent animate-pulse'}`}></div>
+          <span className="text-xs font-mono tracking-wider text-zinc-300">
+            cluster STATUS: {nodes.some(n => n.healthy === false) ? 'DEGRADED' : 'NOMINAL'}
+          </span>
         </div>
 
         <AnimatePresence>
@@ -250,19 +259,17 @@ export default function NodeMap({ nodes, userLocation, l1, l2 }: Props) {
               initial={{ opacity: 0, x: -20, filter: "blur(4px)" }}
               animate={{ opacity: 1, x: 0, filter: "blur(0px)" }}
               exit={{ opacity: 0, x: 20, filter: "blur(4px)" }}
-              className={`px-4 py-3 glass-card rounded-xl flex flex-col border-l-4 shadow-xl ${
-                t.type === "cooldown" ? "border-l-blue-400" :
+              className={`px-4 py-3 glass-card rounded-xl flex flex-col border-l-4 shadow-xl ${t.type === "cooldown" ? "border-l-blue-400" :
                 t.type === "download" ? "border-l-violet-500" :
-                t.type === "delete" ? "border-l-red-600" :
-                "border-l-accent"
-              }`}
+                  t.type === "delete" ? "border-l-red-600" :
+                    "border-l-accent"
+                }`}
             >
-              <span className={`text-[10px] uppercase font-black tracking-widest ${
-                t.type === "cooldown" ? "text-blue-400" :
+              <span className={`text-[10px] uppercase font-black tracking-widest ${t.type === "cooldown" ? "text-blue-400" :
                 t.type === "download" ? "text-violet-400" :
-                t.type === "delete" ? "text-red-500" :
-                "text-accent"
-              }`}>{t.type === "cooldown" ? "❄ COOLING" : t.type}</span>
+                  t.type === "delete" ? "text-red-500" :
+                    "text-accent"
+                }`}>{t.type === "cooldown" ? "❄ COOLING" : t.type}</span>
               <span className="text-xs text-white font-medium truncate max-w-[180px]">{t.name}</span>
             </motion.div>
           ))}
@@ -273,11 +280,10 @@ export default function NodeMap({ nodes, userLocation, l1, l2 }: Props) {
         <div className="flex items-center gap-3"><div className="w-3 h-3 bg-[#2dd4bf] rounded-sm shadow-[0_0_8px_rgba(45,212,191,0.6)]"></div> L1 PRIMARY CACHE</div>
         <div className="flex items-center gap-3"><div className="w-3 h-3 bg-[#f97316] rounded-sm shadow-[0_0_8px_rgba(249,115,22,0.6)]"></div> L2 SECONDARY CACHE</div>
         <div className="flex items-center gap-3"><div className="w-3 h-3 bg-white/10 border border-white/20 rounded-sm"></div> STORAGE NODE</div>
+        <div className="flex items-center gap-3"><div className="w-3 h-3 bg-red-500 rounded-sm shadow-[0_0_8px_rgba(239,68,68,0.6)]"></div> FAILED NODE</div>
         <div className="flex items-center gap-3"><div className="w-3 h-3 bg-accent rounded-full animate-pulse"></div> UPLOAD STREAM</div>
         <div className="flex items-center gap-3"><div className="w-3 h-3 bg-violet-500 rounded-full animate-pulse"></div> DOWNLOAD STREAM</div>
-        <div className="flex items-center gap-3"><div className="w-3 h-3 bg-blue-400 rounded-full animate-pulse"></div> COOLING (HOT→COLD)</div>
       </div>
     </div>
   )
 }
-

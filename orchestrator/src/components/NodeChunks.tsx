@@ -11,14 +11,15 @@ interface Chunk {
 }
 
 export default function NodeChunks({ node, isL1, isL2 }: { node: string, isL1?: boolean, isL2?: boolean }) {
-  const { data } = useSWR(`/api/nodeChunks?node=${node}`, fetcher, {
+  const { data, mutate } = useSWR(`/api/nodeChunks?node=${node}`, fetcher, {
     refreshInterval: 5000
   })
 
   // Theme colors
-  const accentColor = isL1 ? "#2dd4bf" : isL2 ? "#f97316" : "#f97316" // Default to orange for theme consistency but turquoise for L1
-  const badgeColor = isL1 ? "bg-[#2dd4bf]/20 text-[#2dd4bf] border-[#2dd4bf]/30" : isL2 ? "bg-[#f97316]/20 text-[#f97316] border-[#f97316]/30" : "bg-zinc-800/50 text-zinc-500 border-zinc-700/50"
-  const dotColor = isL1 ? "bg-[#2dd4bf]" : isL2 ? "bg-[#f97316]" : "bg-zinc-700"
+  const accentColor = isL1 ? "#2dd4bf" : isL2 ? "#f97316" : "#f97316"
+  const isHealthy = data?.healthy !== false
+  const badgeColor = !isHealthy ? "bg-red-500/20 text-red-500 border-red-500/30" : isL1 ? "bg-[#2dd4bf]/20 text-[#2dd4bf] border-[#2dd4bf]/30" : isL2 ? "bg-[#f97316]/20 text-[#f97316] border-[#f97316]/30" : "bg-zinc-800/50 text-zinc-500 border-zinc-700/50"
+  const dotColor = !isHealthy ? "bg-red-500" : isL1 ? "bg-[#2dd4bf]" : isL2 ? "bg-[#f97316]" : "bg-zinc-700"
 
   if (!data) return (
     <div className="h-48 glass-panel animate-pulse rounded-2xl flex items-center justify-center">
@@ -26,21 +27,25 @@ export default function NodeChunks({ node, isL1, isL2 }: { node: string, isL1?: 
     </div>
   )
 
+  const chunks = data.chunks || []
+
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
-      className="glass-panel rounded-2xl p-5 shadow-2xl hover:border-accent/40 transition-colors group "
+      className={`glass-panel rounded-2xl p-5 shadow-2xl transition-all group ${!isHealthy ? 'opacity-60 grayscale-[50%]' : 'hover:border-accent/40'}`}
     >
       {/* Node Header */}
       <div className="flex flex-col mb-5">
-        <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest leading-none mb-2">Active Node</span>
+        <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest leading-none mb-2">
+          {isHealthy ? "Active Node" : "Offline Node"}
+        </span>
         <div className="flex items-center justify-between">
           <h3 className="text-xl font-black text-white tracking-tighter uppercase">{node}</h3>
           <div className={`flex items-center gap-2 px-3 py-1 rounded-full border ${badgeColor}`}>
-            <span className={`w-1.5 h-1.5 rounded-full ${isL1 || isL2 ? 'animate-pulse' : ''} ${dotColor}`}></span>
+            <span className={`w-1.5 h-1.5 rounded-full ${isHealthy && (isL1 || isL2) ? 'animate-pulse' : ''} ${dotColor}`}></span>
             <span className="text-[9px] font-black uppercase tracking-widest">
-              {isL1 ? "Primary L1" : isL2 ? "Secondary L2" : "Storage"}
+              {!isHealthy ? "OFFLINE" : isL1 ? "Primary L1" : isL2 ? "Secondary L2" : "Storage"}
             </span>
           </div>
         </div>
@@ -51,13 +56,13 @@ export default function NodeChunks({ node, isL1, isL2 }: { node: string, isL1?: 
         <div className="space-y-3">
           <div className="flex justify-between items-end">
             <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">Payload Distribution</span>
-            <span className="text-lg font-black text-white tracking-tighter">{data.length} CHUNKS</span>
+            <span className="text-lg font-black text-white tracking-tighter">{chunks.length} CHUNKS</span>
           </div>
         </div>
 
         {/* List View (Scrollable) */}
         <div className="max-h-48 overflow-y-auto space-y-2 pr-2 custom-scrollbar">
-          {data.map((c: Chunk, i: number) => (
+          {chunks.map((c: Chunk, i: number) => (
             <motion.div
               key={`${c.chunkId}-${c.file}-${i}`}
               initial={{ opacity: 0, x: -10 }}
@@ -73,13 +78,23 @@ export default function NodeChunks({ node, isL1, isL2 }: { node: string, isL1?: 
               </div>
 
               <div className="flex gap-1">
-                <div className="w-1.5 h-1.5 rounded-full bg-accent/100" />
+                <div className={`w-1.5 h-1.5 rounded-full ${!isHealthy ? 'bg-zinc-600' : 'bg-accent'}`} />
               </div>
             </motion.div>
           ))}
         </div>
         <div>
-          {/*"simulate node failure" / "reactivate" button*/}
+          <button 
+             onClick={async () => {
+                await fetch('/api/nodes/toggleAction', {
+                   method: 'POST', body: JSON.stringify({ nodeId: node })
+                });
+                mutate();
+             }}
+             className={`w-full mt-4 p-3 rounded-xl font-bold uppercase text-xs tracking-widest ${!isHealthy ? 'bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500 hover:text-black' : 'bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-black'} transition-colors border border-transparent`}
+          >
+             {!isHealthy ? "Reactivate Node" : "Simulate Failure"}
+          </button>
         </div>
       </div>
     </motion.div>

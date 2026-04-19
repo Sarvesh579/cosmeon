@@ -3,6 +3,8 @@ import Node from "@/models/Node"
 import User from "@/models/User"
 import axios from "axios"
 import { emitMapEvent } from "@/lib/mapEvents"
+import { logEvent } from "@/lib/analytics"
+
 
 /**
  * Runs periodically. Finds files whose cacheExpiresAt has passed (stale hot files),
@@ -61,6 +63,7 @@ export async function redistributeColdFiles() {
 
         try {
           await axios.delete(`${cacheNode.url}/chunk/${chunk.chunkId}`)
+          await Node.updateOne({ nodeId: cacheNodeId }, { $inc: { used: -file.size / file.chunks.length } }) // Approximation since chunks might vary slightly but usually fixed size
         } catch (err) {
           // Node may already be missing the chunk — non-critical
           console.warn(`Could not evict chunk ${chunk.chunkId} from ${cacheNodeId}:`, err)
@@ -74,6 +77,14 @@ export async function redistributeColdFiles() {
     file.isHot = false
     file.cacheExpiresAt = undefined
     await file.save()
+
+    logEvent({
+      type: "cool",
+      fileId: file._id.toString(),
+      filename: file.filename,
+      userId: file.userId,
+      size: file.size
+    })
 
     console.log(`[Redistribute] Cooled file: ${file.filename} (${file._id})`)
   }

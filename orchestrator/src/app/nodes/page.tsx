@@ -22,7 +22,7 @@ export default function Nodes() {
           </tr>
         </thead>
         <tbody>
-          {data.nodes.map((n:any)=>(
+          {data.nodes.map((n: any) => (
             <tr key={n.nodeId} className="border-b">
               <td>{n.nodeId}</td>
               <td>{n.rack}</td>

@@ -4,10 +4,14 @@ import {sha256} from "@/lib/fs-lite/hash"
 import {sendChunkReplicated} from "@/lib/fs-lite/distribute"
 import {buildMerkleRoot} from "@/lib/fs-lite/merkle"
 import {connectDB} from "@/lib/db"
+import Analytics from "@/models/Analytics"
+import { logEvent } from "@/lib/analytics"
 import File from "@/models/File"
 
 
+
 export async function POST(req:NextRequest){
+  const startTime = Date.now()
   await connectDB()
 
   const filename = req.headers.get("x-filename")||"file"
@@ -61,6 +65,27 @@ export async function POST(req:NextRequest){
     rootHash,
     chunks:chunkMeta,
     isHot:false
+  })
+
+  const latency = Date.now() - startTime
+  const speed = buffer.length / (latency / 1000) // bytes per second
+
+  logEvent({
+    type: "upload",
+    fileId: file._id.toString(),
+    filename: file.filename,
+    userId: file.userId,
+    size: buffer.length,
+    latency,
+    speed
+  })
+
+  logEvent({
+    type: "distribute",
+    fileId: file._id.toString(),
+    filename: file.filename,
+    userId: file.userId,
+    size: buffer.length
   })
 
   return NextResponse.json({
