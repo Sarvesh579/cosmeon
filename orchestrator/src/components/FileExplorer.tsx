@@ -29,7 +29,6 @@ function HotBadge({ cacheExpiresAt }: { cacheExpiresAt: string | null }) {
   )
 }
 
-
 export default function FileExplorer() {
   const input = useRef<HTMLInputElement>(null)
   const [currentFolder, setCurrentFolder] = useState("/")

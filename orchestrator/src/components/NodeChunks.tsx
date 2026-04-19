@@ -78,6 +78,9 @@ export default function NodeChunks({ node, isL1, isL2 }: { node: string, isL1?: 
             </motion.div>
           ))}
         </div>
+        <div>
+          {/*"simulate node failure" / "reactivate" button*/}
+        </div>
       </div>
     </motion.div>
   )
