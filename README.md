@@ -79,5 +79,16 @@ ORBIT-3 → http://localhost:4003
 ORBIT-4 → http://localhost:4004  
 ORBIT-5 → http://localhost:4005
 
-## More help with docker:
-![1774291965925](image/README/1774291965925.png)
+Some docker related commands to remember:
+```bash
+npm run dev -- -H cosmeon-fs.co.in
+
+docker compose down -v
+
+docker exec -it cosmeon-mongo mongosh
+
+use cosmeon
+
+db.nodes.deleteMany({})
+db.files.deleteMany({})
+```
