@@ -8,7 +8,7 @@ export function distance(a, b) {
   const sinLat = Math.sin(dLat / 2)
   const sinLon = Math.sin(dLon / 2)
 
-  return sinLat*sinLat +
+  return sinLat*sinLat + 
          Math.cos(lat1) * Math.cos(lat2) *
-         sinLon*sinLon
+        sinLon*sinLon                        //the 'a' term of the haversine formula
 }

@@ -1,5 +1,5 @@
 type MapEvent = {
-  type: "upload" | "download" | "redistribute" | "replicate" | "evict" | "delete" | "cooldown"
+  type: "upload" | "download" | "redistribute" | "replicate" | "evict" | "delete" | "cool" | "verify" | "verify_failed"
   from: { lat: number, lon: number }
   to: { lat: number, lon: number }[]
   name?: string

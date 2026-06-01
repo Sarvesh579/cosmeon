@@ -3,7 +3,7 @@ import Node from "@/models/Node"
 import { connectDB } from "@/lib/db"
 
 interface AnalyticsData {
-  type: "upload" | "download" | "distribute" | "cool" | "heat" | "delete"
+  type: "upload" | "download" | "distribute" | "cool" | "heat" | "delete" | "verify" | "verify_failed" | "chunk_loss" | "partial_loss"
   fileId?: string
   filename?: string
   userId?: string
@@ -21,7 +21,6 @@ export async function logEvent(data: AnalyticsData) {
       used: Math.max(0, n.used || 0),
       capacity: (n.capacity || 0) * 1024 * 1024
     }))
-
     // Save the new event
     await Analytics.create({
       ...data,

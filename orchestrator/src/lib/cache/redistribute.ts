@@ -53,7 +53,7 @@ export async function redistributeColdFiles() {
         // so the map shows the packet travelling back to cold storage
         if (!emittedCooldown && storageNode?.location && cacheNode.location) {
           emitMapEvent({
-            type: "cooldown",
+            type: "cool",
             from: cacheNode.location,
             to: [storageNode.location],
             name: file.filename

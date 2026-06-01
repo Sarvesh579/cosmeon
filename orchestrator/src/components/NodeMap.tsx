@@ -184,7 +184,11 @@ export default function NodeMap({ nodes, userLocation, l1, l2 }: Props) {
             if (d.type === "replicate") color = "#fbbf24" // amber
             if (d.type === "evict") color = "#ef4444" // red
             if (d.type === "delete") color = "#b91c1c" // dark red
-            if (d.type === "cooldown") color = "#60a5fa" // ice blue
+            if (d.type === "cool") color = "#60a5fa" // ice blue
+            if (d.type === "verify") color = "#22c55e"
+            if (d.type === "verify_failed") color = "#5d0000"
+            if (d.type === "chunk_loss") color = "#51006c"
+            if (d.type === "partial_loss") color = "#cd1ea4"
 
             // Linear Interp for packets
             if (!d.start?.lat || !d.start?.lon || !d.target?.lat || !d.target?.lon) return null
@@ -209,7 +213,7 @@ export default function NodeMap({ nodes, userLocation, l1, l2 }: Props) {
             }
 
             // Cooldown: icy expanding ring that fades as it travels cache → storage
-            if (d.type === "cooldown") {
+            if (d.type === "cool") {
               return (
                 <CircleMarker
                   key={d.id}
@@ -259,17 +263,34 @@ export default function NodeMap({ nodes, userLocation, l1, l2 }: Props) {
               initial={{ opacity: 0, x: -20, filter: "blur(4px)" }}
               animate={{ opacity: 1, x: 0, filter: "blur(0px)" }}
               exit={{ opacity: 0, x: 20, filter: "blur(4px)" }}
-              className={`px-4 py-3 glass-card rounded-xl flex flex-col border-l-4 shadow-xl ${t.type === "cooldown" ? "border-l-blue-400" :
+              className={`px-4 py-3 glass-card rounded-xl flex flex-col border-l-4 shadow-xl ${
+                t.type === "cool" ? "border-l-blue-400" :
                 t.type === "download" ? "border-l-violet-500" :
-                  t.type === "delete" ? "border-l-red-600" :
-                    "border-l-accent"
-                }`}
+                t.type === "delete" ? "border-l-red-600" :
+                t.type === "verify" ? "border-l-green-500" :
+                t.type === "verify_failed" ? "border-l-red-500" :
+                t.type === "chunk_loss" ? "border-l-red-700" :
+                t.type === "partial_loss" ? "border-l-orange-500" :
+                "border-l-accent"
+              }`}
             >
-              <span className={`text-[10px] uppercase font-black tracking-widest ${t.type === "cooldown" ? "text-blue-400" :
+              <span className={`text-[10px] uppercase font-black tracking-widest ${
+                t.type === "cool" ? "text-blue-400" :
                 t.type === "download" ? "text-violet-400" :
-                  t.type === "delete" ? "text-red-500" :
-                    "text-accent"
-                }`}>{t.type === "cooldown" ? "❄ COOLING" : t.type}</span>
+                t.type === "delete" ? "text-red-500" :
+                t.type === "verify" ? "text-green-400" :
+                t.type === "verify_failed" ? "text-red-400" :
+                t.type === "chunk_loss" ? "text-red-600" :
+                t.type === "partial_loss" ? "text-orange-400" :
+                "text-accent"
+              }`}>{
+                t.type === "cool" ? "❄ COOLING" :
+                t.type === "verify" ? "✓ VERIFIED" :
+                t.type === "verify_failed" ? "✕ CORRUPTED" :
+                t.type === "chunk_loss" ? "⚠ CHUNK LOST" :
+                t.type === "partial_loss" ? "⚠ FILE INCOMPLETE" :
+                t.type
+              }</span>
               <span className="text-xs text-white font-medium truncate max-w-[180px]">{t.name}</span>
             </motion.div>
           ))}

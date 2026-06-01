@@ -13,8 +13,9 @@ export async function fetchChunk(nodeId:string, chunkId:string, userLocation?:an
   if(!node) return null
   
   if(userLocation && node.location){
-    const d=distance(userLocation,node.location)
-    const simulatedLatency=d*400
+    const a = distance(userLocation,node.location)
+    const PropagationLatency = Math.asin(Math.sqrt(a)) * 63.71 // miliseconds
+    const simulatedLatency = PropagationLatency + 2
     await sleep(simulatedLatency)
   }
 

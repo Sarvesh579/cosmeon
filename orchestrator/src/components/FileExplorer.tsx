@@ -211,6 +211,112 @@ export default function FileExplorer() {
     if (input.current) input.current.value = ""
   }
 
+  async function downloadFile(f:any){
+    const res = await fetch(
+      `/api/fs/download?id=${f.id}`
+    )
+
+    const user = JSON.parse(localStorage.getItem("userLocation") || "null")
+    const cacheNodes = JSON.parse(localStorage.getItem("cacheNodes") || "[]")
+    const allNodes = JSON.parse(localStorage.getItem("allNodes") || "[]")
+
+    if(!res.ok){
+      emitMapEvent({
+        type:"verify_failed",
+        from:user,
+        to:[user],
+        name:f.name
+      })
+      alert("File integrity verification failed")
+      return
+    }
+
+    emitMapEvent({
+      type:"verify",
+      from:user,
+      to:[user],
+      name:f.name
+    })
+
+    const blob = await res.blob()
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = f.name
+    a.click()
+
+    URL.revokeObjectURL(url)
+    if (!user || !cacheNodes.length || !allNodes.length) return
+    const l2Location = cacheNodes[1]
+    const nonCache = allNodes.find((n:any)=>
+      n?.location?.lat &&
+      n?.location?.lon &&
+      !cacheNodes.some((c:any)=>
+        c.lat===n.location.lat &&
+        c.lon===n.location.lon
+      )
+    )
+
+    const l2Id = JSON.parse(
+      localStorage.getItem("l2") || "[]"
+    )[0] || ""
+
+    const l1Id = localStorage.getItem("l1") || ""
+    const cacheSourceId = f.storageNodes?.find(
+      (id:string)=>id===l1Id || id===l2Id
+    )
+
+    const cacheSource = allNodes.find(
+      (n:any)=>n.nodeId===cacheSourceId
+    )
+
+    const storageSourceId = f.storageNodes?.find(
+      (id:string)=>id!==l1Id && id!==l2Id
+    )
+
+    const storageSource = allNodes.find(
+      (n:any)=>n.nodeId===storageSourceId
+    )
+
+    const sourceLocation =
+      (f.isHot && cacheSource)
+        ? cacheSource.location
+        : (storageSource?.location || nonCache?.location)
+
+    setTimeout(()=>{
+      if(f.isHot){
+        emitMapEvent({
+          type:"download",
+          from:sourceLocation || l2Location,
+          to:[user],
+          name:f.name + " (Cache Hit)"
+        })
+      }else if(sourceLocation){
+        emitMapEvent({
+          type:"download",
+          from:sourceLocation,
+          to:[l2Location],
+          name:f.name + " (Storage → Cache)"
+        })
+        setTimeout(()=>{
+          emitMapEvent({
+            type:"download",
+            from:l2Location,
+            to:[user],
+            name:f.name + " (Cache → User)"
+          })
+        },2300)
+      }else{
+        emitMapEvent({
+          type:"download",
+          from:l2Location,
+          to:[user],
+          name:f.name
+        })
+      }
+    }, 1000)
+  }
+
   return (
     <div
       onDrop={handleDrop}
@@ -403,76 +509,12 @@ export default function FileExplorer() {
                 </div>
 
                 <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-all translate-x-2 group-hover:translate-x-0">
-                  <a
-                    onClick={() => {
-                      const user = JSON.parse(localStorage.getItem("userLocation") || "null")
-                      const cacheNodes = JSON.parse(localStorage.getItem("cacheNodes") || "[]")
-                      const allNodes = JSON.parse(localStorage.getItem("allNodes") || "[]")
-
-                      if (!user || !cacheNodes.length || !allNodes.length) return
-
-                      const l2Location = cacheNodes[1]
-
-                      const nonCache = allNodes.find((n: any) =>
-                        n?.location?.lat && n?.location?.lon &&
-                        !cacheNodes.some((c: any) => c.lat === n.location.lat && c.lon === n.location.lon)
-                      )
-
-                      const l2Id = JSON.parse(localStorage.getItem("l2") || "[]")[0] || ""
-                      const l1Id = localStorage.getItem("l1") || ""
-
-                      // Check if data is already in one of the cache nodes
-                      const cacheSourceId = f.storageNodes?.find((id: string) => id === l1Id || id === l2Id)
-                      const cacheSource = allNodes.find((n: any) => n.nodeId === cacheSourceId)
-                      
-                      // For cold files, pick a storage source
-                      const storageSourceId = f.storageNodes?.find((id: string) => id !== l1Id && id !== l2Id)
-                      const storageSource = allNodes.find((n: any) => n.nodeId === storageSourceId)
-                      
-                      const sourceLocation = (f.isHot && cacheSource) ? cacheSource.location : (storageSource?.location || nonCache?.location)
-
-                      if (f.isHot) {
-                        // HOT: Direct from the CACHE node (where it actually exists) to user
-                        emitMapEvent({
-                          type: "download",
-                          from: sourceLocation || l2Location,
-                          to: [user],
-                          name: f.name + " (Cache Hit)"
-                        })
-                      } else if (sourceLocation) {
-                        // COLD: Two-stage animation to reflect "Warming" process
-                        // 1. Fetch from the specific storage orbit to the Cache
-                        emitMapEvent({
-                          type: "download",
-                          from: sourceLocation,
-                          to: [l2Location],
-                          name: f.name + " (Storage → Cache)"
-                        })
-
-                        // 2. Stream from Cache to the user after warming
-                        setTimeout(() => {
-                          emitMapEvent({
-                            type: "download",
-                            from: l2Location,
-                            to: [user],
-                            name: f.name + " (Cache → User)"
-                          })
-                        }, 2300) 
-                      } else {
-                        // FALLBACK
-                        emitMapEvent({
-                          type: "download",
-                          from: l2Location,
-                          to: [user],
-                          name: f.name
-                        })
-                      }
-                    }}
-                    href={`/api/fs/download?id=${f.id}`}
+                  <button
+                    onClick={() => downloadFile(f)}
                     className="p-3 bg-white/5 rounded-xl text-zinc-500 hover:text-accent hover:bg-accent/10 transition-all border border-transparent hover:border-accent/20"
                   >
                     <Download size={18} strokeWidth={2.5} />
-                  </a>
+                  </button>
                   <button onClick={() => rename(f.id)} className="p-3 bg-white/5 rounded-xl text-zinc-500 hover:text-accent hover:bg-accent/10 transition-all border border-transparent hover:border-accent/20"><Edit2 size={18} /></button>
                   <button onClick={() => remove(f.id)} className="p-3 bg-white/5 rounded-xl text-zinc-500 hover:text-red-500 hover:bg-red-500/10 transition-all border border-transparent hover:border-red-500/20"><Trash2 size={18} /></button>
                 </div>

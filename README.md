@@ -40,6 +40,7 @@ npm install
 ---
 
 ### 4. Create mongodb docker
+start up the Docker Desktop and then in the same dir of orchestrator/
 ```
 docker run -d -p 27017:27017 --name cosmeon-mongo mongo
 ```
@@ -55,10 +56,8 @@ docker compose up -d
 ---
 
 ### 5. Start Mongoose
-in same terminal
-
+in same terminal at docker/
 ```
-cd docker
 docker start cosmeon-mongo
 ```
 ---

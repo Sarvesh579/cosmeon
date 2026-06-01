@@ -3,7 +3,18 @@ import mongoose from "mongoose"
 const AnalyticsSchema = new mongoose.Schema({
   type: {
     type: String,
-    enum: ["upload", "download", "distribute", "cool", "heat", "delete"],
+    enum:[
+      "upload",
+      "download",
+      "delete",
+      "heat",
+      "distribute",
+      "cool",
+      "verify",
+      "verify_failed",
+      "chunk_loss",
+      "partial_loss"
+    ],
     required: true
   },
   timestamp: { type: Date, default: Date.now },

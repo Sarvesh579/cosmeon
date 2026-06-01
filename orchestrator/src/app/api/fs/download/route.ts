@@ -1,6 +1,6 @@
 import "server-only"
 export const runtime="nodejs"
-
+import {emitMapEvent} from "@/lib/mapEvents"
 import {NextRequest,NextResponse} from "next/server"
 import {connectDB} from "@/lib/db"
 import File from "@/models/File"
@@ -12,6 +12,8 @@ import Node from "@/models/Node"
 import {distance} from "@/lib/distance"
 import axios from "axios"
 import { logEvent } from "@/lib/analytics"
+import {sha256} from "@/lib/fs-lite/hash"
+import {buildMerkleRoot} from "@/lib/fs-lite/merkle"
 
 const CACHE_LIMIT=20
 
@@ -123,15 +125,74 @@ export async function GET(req:NextRequest){
 
     totalLatency += (Date.now() - start)
     
-    if (!data) {
-      return NextResponse.json({ error: `Chunk ${chunk.chunkId} is unavailable` }, { status: 500 })
-    }
-    
+    if(!data){
+    logEvent({
+      type:"chunk_loss",
+      fileId:file._id.toString(),
+      filename:file.filename,
+      userId:file.userId,
+      chunkId:chunk.chunkId
+    })
+
+    return NextResponse.json(
+      {
+        error:`Chunk ${chunk.chunkId} is unavailable`
+      },
+      {status:500}
+    )
+  }
+      
     buffers.push(data)
   }
 
-  const fileBuffer = Buffer.concat(buffers)
+  if(buffers.length !== chunksToProcess.length){
+    logEvent({
+      type:"partial_loss",
+      fileId:file._id.toString(),
+      filename:file.filename,
+      userId:file.userId,
+      recovered:buffers.length,
+      expected:chunksToProcess.length
+    })
 
+    return NextResponse.json(
+      {error:"file incomplete"},
+      {status:500}
+    )
+  }
+
+  const fileBuffer = Buffer.concat(buffers)
+  
+  const chunkHashes = chunksToProcess.map((chunk:any)=>{
+    const buffer = buffers[chunk.order]
+    return sha256(buffer)
+  })
+
+  const calculatedRoot = buildMerkleRoot(chunkHashes)
+
+  if(calculatedRoot !== file.rootHash){
+    logEvent({
+      type:"verify_failed",
+      fileId:file._id.toString(),
+      filename:file.filename,
+      userId:file.userId
+    })
+    console.error(
+      `Merkle verification failed for ${file.filename}`
+    )
+    return NextResponse.json(
+      {error:"file integrity verification failed"},
+      {status:500}
+    )
+  }
+  
+  logEvent({
+    type:"verify",
+    fileId:file._id.toString(),
+    filename:file.filename,
+    userId:file.userId
+  })
+  
   // Save aggregate metrics in the background
   CacheMetrics.create({
     policy: policy.name,
