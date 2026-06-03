@@ -78,6 +78,13 @@ ORBIT-3 → http://localhost:4003
 ORBIT-4 → http://localhost:4004  
 ORBIT-5 → http://localhost:4005
 
+### 7. To stop all dockers
+in thet= terminal of /docker/
+```bash
+docker stop cosemeon-mongo
+docker compose down 
+```
+
 Some docker related commands to remember:
 ```bash
 npm run dev -- -H cosmeon-fs.co.in

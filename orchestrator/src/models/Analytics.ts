@@ -13,7 +13,7 @@ const AnalyticsSchema = new mongoose.Schema({
       "verify",
       "verify_failed",
       "chunk_loss",
-      "partial_loss"
+      "partial_loss",
     ],
     required: true
   },
@@ -24,6 +24,12 @@ const AnalyticsSchema = new mongoose.Schema({
   size: Number, // In bytes
   latency: Number, // In ms
   speed: Number, // In bytes/s
+  distance:Number,
+  chunkCount:Number,
+  verificationPassed:Boolean,
+  architecture:String,
+  cachePolicy:String,
+  coldOrHot:String,
   nodeStats: [
     {
       nodeId: String,

@@ -5,10 +5,22 @@ const Schema=new mongoose.Schema({
   fileId:String,
   userId:String,
   hit:Boolean,
+  cacheLevel:String,
   latency:Number,
   distance:Number,
   nodeId:String,
-  createdAt:{type:Date,default:Date.now}
+  chunkCount:Number,
+  fileSize:Number,
+  speed:Number,
+  replicaCount:Number,
+  architecture:String,
+  cachePolicy:String,
+  coldOrHot:String,
+  verificationPassed:Boolean,
+  createdAt:{
+    type:Date,
+    default:Date.now
+  }
 })
 
 export default mongoose.models.CacheMetrics||

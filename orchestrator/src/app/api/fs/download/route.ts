@@ -14,23 +14,25 @@ import axios from "axios"
 import { logEvent } from "@/lib/analytics"
 import {sha256} from "@/lib/fs-lite/hash"
 import {buildMerkleRoot} from "@/lib/fs-lite/merkle"
+import {ARCHITECTURE} from "@/lib/config"
+import {evictFile} from "@/lib/cache/evictFile"
 
 const CACHE_LIMIT=20
 
 export async function GET(req:NextRequest){
   const startTime = Date.now()
   await connectDB()
-  const id=req.nextUrl.searchParams.get("id")
+  const id = req.nextUrl.searchParams.get("id")
   if(!id){
     return NextResponse.json({error:"missing id"})
   }
-  const file=await File.findById(id)
+  const file = await File.findById(id)
   if(!file){
     return NextResponse.json({error:"file not found"})
   }
-  const user=await User.findById(file.userId)
-  const policy=policies[process.env.CACHE_POLICY||"lru"]
-  const entry={
+  const user = await User.findById(file.userId)
+  const policy = policies[process.env.CACHE_POLICY || "lru"]
+  const entry = {
     fileId:file._id.toString(),
     lastAccess:Date.now(),
     frequency:file.accessCount||0,
@@ -43,7 +45,10 @@ export async function GET(req:NextRequest){
   }
 
   // If the file is cold, warm it: replicate chunks into the L1 cache node
-  if(!file.isHot){
+  if(
+    ARCHITECTURE==="cached" &&
+    !file.isHot
+  ){
     const cacheNodeId = user?.cacheLayout?.L1
     if(cacheNodeId){
       const cacheNode = await Node.findOne({nodeId: cacheNodeId})
@@ -79,7 +84,9 @@ export async function GET(req:NextRequest){
   }
 
   // Reset/extend the cache TTL on every access
-  file.cacheExpiresAt = new Date(Date.now() + CACHE_TTL)
+  if(ARCHITECTURE==="cached"){
+    file.cacheExpiresAt = new Date(Date.now()+CACHE_TTL)
+  }
   await file.save()
 
   const hotFiles=await File.find().sort({heatScore:-1}).limit(CACHE_LIMIT)
@@ -90,8 +97,8 @@ export async function GET(req:NextRequest){
       frequency:f.accessCount||0,
       createdAt:f.createdAt.getTime()
     }))
-    const victim=policy.chooseEviction(entries)
-    await File.updateOne({_id:victim},{$set:{heatScore:0}})
+    const victim = policy.chooseEviction(entries)
+    await evictFile(victim)
   }
   // Convert Mongoose DocumentArray to plain array before sorting
   const chunksToProcess = [...file.chunks].sort((a:any, b:any) => a.order - b.order)
@@ -110,7 +117,13 @@ export async function GET(req:NextRequest){
     for (const nodeId of chunk.nodes) {
       try {
         const node = await Node.findOne({ nodeId })
-        data = await fetchChunk(nodeId, chunk.chunkId, user?.location)
+        data=await fetchChunk(
+          nodeId,
+          chunk.chunkId,
+          ARCHITECTURE==="cached"
+            ? user?.location
+            : undefined
+        )
         if (data) {
           usedNodeId = nodeId
           if (user?.location && node?.location) {
@@ -169,6 +182,8 @@ export async function GET(req:NextRequest){
   })
 
   const calculatedRoot = buildMerkleRoot(chunkHashes)
+  const totalTime = Date.now() - startTime
+  const downloadSpeed = fileBuffer.length / (totalTime / 1000)
 
   if(calculatedRoot !== file.rootHash){
     logEvent({
@@ -195,17 +210,23 @@ export async function GET(req:NextRequest){
   
   // Save aggregate metrics in the background
   CacheMetrics.create({
-    policy: policy.name,
-    fileId: file._id,
-    userId: file.userId,
-    nodeId: usedNodeId,
-    latency: totalLatency / chunksToProcess.length,
-    distance: avgDistance / chunksToProcess.length,
-    hit: true
+    policy:policy.name,
+    fileId:file._id,
+    userId:file.userId,
+    nodeId:usedNodeId,
+    latency:totalLatency/chunksToProcess.length,
+    distance:avgDistance/chunksToProcess.length,
+    hit:file.isHot,
+    cacheLevel:file.isHot?"L1":"STORAGE",
+    chunkCount:chunksToProcess.length,
+    fileSize:fileBuffer.length,
+    speed:downloadSpeed,
+    replicaCount:3,
+    verificationPassed:true,
+    architecture:ARCHITECTURE,
+    cachePolicy:policy.name,
+    coldOrHot:file.isHot ? "hot" : "cold"
   }).catch(e => console.error("Metrics error:", e))
-
-  const totalTime = Date.now() - startTime
-  const downloadSpeed = fileBuffer.length / (totalTime / 1000)
 
   logEvent({
     type: "download",

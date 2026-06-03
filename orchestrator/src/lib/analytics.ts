@@ -24,6 +24,8 @@ export async function logEvent(data: AnalyticsData) {
     // Save the new event
     await Analytics.create({
       ...data,
+      architecture: process.env.ARCHITECTURE,
+      cachePolicy: process.env.CACHE_POLICY,
       nodeStats,
       timestamp: new Date()
     })

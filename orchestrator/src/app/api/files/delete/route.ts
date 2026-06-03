@@ -6,6 +6,8 @@ import { logEvent } from "@/lib/analytics"
 import axios from "axios"
 import { NODES } from "@/lib/fs-lite/nodes"
 
+const startTime = Date.now()
+
 export async function POST(req: NextRequest) {
   await connectDB()
   try {
@@ -41,6 +43,14 @@ export async function POST(req: NextRequest) {
       }
 
       await File.findByIdAndDelete(id)
+      logEvent({
+        type:"delete",
+        fileId:file._id.toString(),
+        filename:file.filename,
+        userId:file.userId,
+        latency:Date.now()-startTime,
+        size:file.size
+      })
       return NextResponse.json({ ok: true })
     }
     
