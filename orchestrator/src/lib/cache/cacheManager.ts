@@ -10,4 +10,4 @@ export const policies={
   lruk:new LRUK()
 }
 
-export const CACHE_TTL=120*1000 // 120 seconds
+export const CACHE_TTL=10*1000 // 120 seconds

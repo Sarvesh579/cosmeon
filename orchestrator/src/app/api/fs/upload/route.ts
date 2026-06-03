@@ -7,8 +7,8 @@ import {connectDB} from "@/lib/db"
 import Analytics from "@/models/Analytics"
 import { logEvent } from "@/lib/analytics"
 import File from "@/models/File"
-
-
+import CacheMetrics from "@/models/CacheMetrics"
+import {ARCHITECTURE} from "@/lib/config"
 
 export async function POST(req:NextRequest){
   const startTime = Date.now()
@@ -69,6 +69,25 @@ export async function POST(req:NextRequest){
 
   const latency = Date.now() - startTime
   const speed = buffer.length / (latency / 1000) // bytes per second
+
+  await CacheMetrics.create({
+    operation:"upload",
+    architecture:ARCHITECTURE,
+    cachePolicy:process.env.CACHE_POLICY || "lru",
+    coldOrHot:"cold",
+    fileId:file._id.toString(),
+    userId:file.userId,
+    hit:false,
+    cacheLevel: file.isHot ? "L1" : "STORAGE",
+    latency,
+    distance:0,
+    nodeId:"",
+    chunkCount:chunkMeta.length,
+    fileSize:file.size,
+    speed,
+    replicaCount:3,
+    verificationPassed:true
+  })
 
   logEvent({
     type: "upload",

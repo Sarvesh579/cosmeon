@@ -1,90 +1,130 @@
-import axios from "axios"
 import crypto from "crypto"
+import cliProgress from "cli-progress"
 
-const FILES = 50 // Number of files to upload/download/delete in the benchmark
+const FILES = 10 // Number of files to upload/download/delete in the benchmark
 
 function RandomInt(min: number, max: number): number {
-  return Math.floor(Math.random() * (max - min) + min);
+  return Math.floor(Math.random() * (max - min) + min)
 }
 
-async function run(){
-  const uploaded = []
+async function run() {
+  const uploaded: any[] = []
 
-  for(let i=0; i<FILES; i++) {
-    const data = crypto.randomBytes(1024*RandomInt(100, 1024)) 
+  const multibar = new cliProgress.MultiBar(
+    {
+      clearOnComplete: false,
+      hideCursor: true,
+      format:
+        "{task} |{bar}| {percentage}% || {value}/{total}"
+    },
+    cliProgress.Presets.shades_classic
+  )
 
-    const res=await fetch(
+  // ---------------- UPLOAD ----------------
+  const uploadBar = multibar.create(FILES, 0, {
+    task: "UPLOAD       "
+  })
+
+  for (let i = 0; i < FILES; i++) {
+    const data = crypto.randomBytes(
+      1024 * RandomInt(100, 1024)
+    )
+
+    const res = await fetch(
       "http://localhost:3000/api/fs/upload",
       {
-        method:"POST",
-        headers:{
-          "x-filename":
-            `bench-${i}.bin`,
-          "x-user":
-            "69cfffee616f420dbf6f354c"
+        method: "POST",
+        headers: {
+          "x-filename": `bench-${i}.bin`,
+          "x-user": "69cfffee616f420dbf6f354c"
         },
-        body:data
+        body: data
       }
     )
-    console.log(
-      "Upload status:",
-      res.status,
-      res.statusText
-    )
+
+    if (!res.ok) {
+      throw new Error(
+        `Upload failed (${res.status})`
+      )
+    }
 
     const result = await res.json()
-    console.log(result)
     uploaded.push(result)
+    uploadBar.increment()
   }
+  uploadBar.stop()
 
-  console.log("UPLOAD DONE")
+  // ---------------- COLD DOWNLOAD ----------------
+  const coldBar = multibar.create(FILES, 0, {
+    task: "COLD DOWNLOAD"
+  })
 
-  for(const f of uploaded){
+  for (const f of uploaded) {
     const down = await fetch(
       `http://localhost:3000/api/fs/download?id=${f.fileId}`
     )
-    console.log(
-      "COLD DOWNLOAD",
-      f.fileId,
-      down.status
-    )
+    if (!down.ok) {
+      throw new Error(
+        `Cold download failed (${down.status})`
+      )
+    }
+    coldBar.increment()
   }
+  coldBar.stop()
 
-  console.log("COLD DOWNLOAD DONE")
+  // ---------------- HOT DOWNLOAD ----------------
+  const hotBar = multibar.create(FILES, 0, {
+    task: "HOT DOWNLOAD "
+  })
 
-  for(const f of uploaded){
+  for (const f of uploaded) {
     const down = await fetch(
       `http://localhost:3000/api/fs/download?id=${f.fileId}`
     )
-    console.log(
-      "HOT DOWNLOAD",
-      f.fileId,
-      down.status
-    )
+
+    if (!down.ok) {
+      throw new Error(
+        `Hot download failed (${down.status})`
+      )
+    }
+    hotBar.increment()
   }
+  hotBar.stop()
 
-  console.log("HOT DOWNLOAD DONE")
+  await new Promise(r =>
+    setTimeout(r,10000) // Wait for 10 seconds to allow cache state to stabilize before logging metrics
+  )
+  
+  // ---------------- DELETE ----------------
+  const deleteBar = multibar.create(FILES, 0, {
+    task: "DELETE       "
+  })
 
-  for(const f of uploaded){
+  for (const f of uploaded) {
     const del = await fetch(
       "http://localhost:3000/api/files/delete",
       {
-        method:"POST",
-        headers:{
-          "Content-Type":"application/json"
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
         },
-        body:JSON.stringify({
-          id:f.fileId
+        body: JSON.stringify({
+          id: f.fileId
         })
       }
     )
-    console.log(
-      "DELETE",
-      f.fileId,
-      del.status
-    )
+
+    if (!del.ok) {
+      throw new Error(
+        `Delete failed (${del.status})`
+      )
+    }
+    deleteBar.increment()
   }
 
-  console.log("DELETE DONE")
+  deleteBar.stop()
+  multibar.stop()
+  console.log("\nBenchmark completed successfully.")
 }
-run()
+
+run().catch(console.error)

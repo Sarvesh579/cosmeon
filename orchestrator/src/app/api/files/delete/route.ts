@@ -5,11 +5,12 @@ import Node from "@/models/Node"
 import { logEvent } from "@/lib/analytics"
 import axios from "axios"
 import { NODES } from "@/lib/fs-lite/nodes"
-
-const startTime = Date.now()
+import CacheMetrics from "@/models/CacheMetrics"
+import {ARCHITECTURE} from "@/lib/config"
 
 export async function POST(req: NextRequest) {
   await connectDB()
+  const startTime = Date.now()
   try {
     const { id } = await req.json()
     const file = await File.findById(id)
@@ -41,6 +42,25 @@ export async function POST(req: NextRequest) {
           }
         }
       }
+
+      await CacheMetrics.create({
+        operation:"delete",
+        architecture:ARCHITECTURE,
+        cachePolicy:process.env.CACHE_POLICY || "lru",
+        coldOrHot:"na",
+        fileId:file._id.toString(),
+        userId:file.userId,
+        hit: file.isHot? true : false,
+        cacheLevel: file.isHot ? "L1" : "STORAGE",
+        latency:Date.now()-startTime,
+        distance:0,
+        nodeId:"",
+        chunkCount:file.chunks.length,
+        fileSize:file.size,
+        speed:0,
+        replicaCount:0,
+        verificationPassed:true
+      })
 
       await File.findByIdAndDelete(id)
       logEvent({

@@ -27,6 +27,7 @@ export async function GET(req:NextRequest){
     return NextResponse.json({error:"missing id"})
   }
   const file = await File.findById(id)
+  const wasHot = file.isHot
   if(!file){
     return NextResponse.json({error:"file not found"})
   }
@@ -209,23 +210,23 @@ export async function GET(req:NextRequest){
   })
   
   // Save aggregate metrics in the background
-  CacheMetrics.create({
-    policy:policy.name,
-    fileId:file._id,
+  await CacheMetrics.create({
+    operation:"download",
+    architecture:ARCHITECTURE,
+    cachePolicy:policy.name,
+    coldOrHot:wasHot ? "hot" : "cold",
+    fileId:file._id.toString(),
     userId:file.userId,
-    nodeId:usedNodeId,
+    hit:wasHot,
+    cacheLevel:wasHot ? "L1" : "STORAGE",
     latency:totalLatency/chunksToProcess.length,
     distance:avgDistance/chunksToProcess.length,
-    hit:file.isHot,
-    cacheLevel:file.isHot?"L1":"STORAGE",
+    nodeId:usedNodeId,
     chunkCount:chunksToProcess.length,
     fileSize:fileBuffer.length,
     speed:downloadSpeed,
     replicaCount:3,
-    verificationPassed:true,
-    architecture:ARCHITECTURE,
-    cachePolicy:policy.name,
-    coldOrHot:file.isHot ? "hot" : "cold"
+    verificationPassed:true
   }).catch(e => console.error("Metrics error:", e))
 
   logEvent({

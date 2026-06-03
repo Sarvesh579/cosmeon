@@ -1,7 +1,14 @@
 import mongoose from "mongoose"
 
 const Schema=new mongoose.Schema({
-  policy:String,
+  createdAt:{
+    type:Date,
+    default:Date.now
+  },
+  operation:String,
+  architecture:String,
+  cachePolicy:String,
+  coldOrHot:String,
   fileId:String,
   userId:String,
   hit:Boolean,
@@ -12,15 +19,8 @@ const Schema=new mongoose.Schema({
   chunkCount:Number,
   fileSize:Number,
   speed:Number,
-  replicaCount:Number,
-  architecture:String,
-  cachePolicy:String,
-  coldOrHot:String,
-  verificationPassed:Boolean,
-  createdAt:{
-    type:Date,
-    default:Date.now
-  }
+  replicaCount:Number,  
+  verificationPassed:Boolean
 })
 
 export default mongoose.models.CacheMetrics||
