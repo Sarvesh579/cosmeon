@@ -359,7 +359,7 @@ export default function FileExplorer() {
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-3xl font-black text-white tracking-tighter">COSMEON</h1>
-          <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-[0.3em]">Protocol v4.0 • Core</p>
+          <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-[0.3em]">Protocol v5.0 • Core</p>
         </div>
 
         <div className="flex items-center gap-4">

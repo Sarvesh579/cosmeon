@@ -1,10 +1,21 @@
 import crypto from "crypto"
 import cliProgress from "cli-progress"
 
-const FILES = 10 // Number of files to upload/download/delete in the benchmark
+const FILES = 30 // Number of files to upload/download/delete in the benchmark
 
 function RandomInt(min: number, max: number): number {
   return Math.floor(Math.random() * (max - min) + min)
+}
+
+function shuffle<T>(array: T[]): T[] {
+  const arr = [...array]
+
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[arr[i], arr[j]] = [arr[j], arr[i]]
+  }
+
+  return arr
 }
 
 async function run() {
@@ -54,46 +65,50 @@ async function run() {
   }
   uploadBar.stop()
 
-  // ---------------- COLD DOWNLOAD ----------------
-  const coldBar = multibar.create(FILES, 0, {
-    task: "COLD DOWNLOAD"
-  })
+  // ---------------- RANDOM DOWNLOADS ----------------
+  const downloadQueue = shuffle([
+    ...uploaded,
+    ...uploaded
+  ]) // each file appears exactly twice
 
-  for (const f of uploaded) {
-    const down = await fetch(
-      `http://localhost:3000/api/fs/download?id=${f.fileId}`
-    )
-    if (!down.ok) {
-      throw new Error(
-        `Cold download failed (${down.status})`
-      )
+  const downloadBar = multibar.create(
+    downloadQueue.length,
+    0, {
+      task: "DOWNLOADS    "
     }
-    coldBar.increment()
-  }
-  coldBar.stop()
-
-  // ---------------- HOT DOWNLOAD ----------------
-  const hotBar = multibar.create(FILES, 0, {
-    task: "HOT DOWNLOAD "
-  })
-
-  for (const f of uploaded) {
-    const down = await fetch(
-      `http://localhost:3000/api/fs/download?id=${f.fileId}`
-    )
-
-    if (!down.ok) {
-      throw new Error(
-        `Hot download failed (${down.status})`
-      )
-    }
-    hotBar.increment()
-  }
-  hotBar.stop()
-
-  await new Promise(r =>
-    setTimeout(r,10000) // Wait for 10 seconds to allow cache state to stabilize before logging metrics
   )
+
+  for (const f of downloadQueue) {
+    const down = await fetch(
+      `http://localhost:3000/api/fs/download?id=${f.fileId}`
+    )
+
+   if (!down.ok) {
+      const body = await down.text()
+
+      throw new Error(
+        `Download failed (${down.status})\n${body}`
+      )
+    } 
+    downloadBar.increment()
+  }
+
+  downloadBar.stop()
+
+  // ---------------- WAITING -----------------
+  const waitBar = multibar.create(10, 0, {
+    task: "WAITING      "
+  })
+
+  for (let i = 0; i < 10; i++) {
+    await new Promise(r =>
+      setTimeout(r, 1000)
+    )
+
+    waitBar.increment()
+  }
+
+  waitBar.stop()
   
   // ---------------- DELETE ----------------
   const deleteBar = multibar.create(FILES, 0, {

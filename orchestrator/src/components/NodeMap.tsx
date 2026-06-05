@@ -1,5 +1,5 @@
 "use client"
-import { MapContainer, TileLayer, Marker, Popup, CircleMarker } from "react-leaflet"
+import { MapContainer, TileLayer, Marker, Popup, CircleMarker, useMap } from "react-leaflet"
 import L from "leaflet"
 import { useEffect, useState, useRef } from "react"
 import { subscribeMapEvents } from "@/lib/mapEvents"
@@ -68,6 +68,26 @@ const createNodeIcon = (type: "normal" | "l1" | "l2" | "failed") => {
   })
 }
 
+function FitBounds({nodes,userLocation}:any){
+  const map = useMap()
+
+  useEffect(()=>{
+    const points = [
+      [userLocation.lat,userLocation.lon],
+      ...nodes.map((n:any)=>[
+        n.location.lat,
+        n.location.lon
+      ])
+    ]
+
+    map.fitBounds(points,{
+      padding:[50,50]
+    })
+  },[map,nodes,userLocation])
+
+  return null
+}
+
 export default function NodeMap({ nodes, userLocation, l1, l2 }: Props) {
   const [dots, setDots] = useState<Dot[]>([])
   const [activeTransfers, setActiveTransfers] = useState<{ name: string, type: string }[]>([])
@@ -130,11 +150,12 @@ export default function NodeMap({ nodes, userLocation, l1, l2 }: Props) {
     <div className="relative h-full w-full rounded-2xl overflow-hidden glass-panel">
       {/* Map Content */}
       <MapContainer
-        center={[userLocation.lat, userLocation.lon]}
-        zoom={10}
+        center={[20, 20]}
+        zoom={2}
         style={{ height: "100%", width: "100%" }}
         zoomControl={false}
       >
+        <FitBounds nodes={nodes} userLocation={userLocation}/>
         <TileLayer
           attribution="© CartoDB"
           url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"

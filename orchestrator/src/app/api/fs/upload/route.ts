@@ -73,7 +73,7 @@ export async function POST(req:NextRequest){
   await CacheMetrics.create({
     operation:"upload",
     architecture:ARCHITECTURE,
-    cachePolicy:process.env.CACHE_POLICY || "lru",
+    cachePolicy:(process.env.CACHE_POLICY || "lru").toLowerCase(),
     coldOrHot:"cold",
     fileId:file._id.toString(),
     userId:file.userId,

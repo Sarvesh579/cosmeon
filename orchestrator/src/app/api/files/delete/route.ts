@@ -29,7 +29,10 @@ export async function POST(req: NextRequest) {
         const chunkSize = file.size / file.chunks.length
         for (const nodeId of chunk.nodes) {
           // Update DB stats
-          await Node.updateOne({ nodeId }, { $inc: { used: -chunkSize } })
+          await Node.updateOne(
+            {nodeId},
+            [{ $set:{ used:{ $max:[ 0, { $subtract:["$used", chunkSize ]}]}}}]
+          )
           
           // Try to delete actual file from node
           const nodeConfig = NODES.find(n => n.id === nodeId)
@@ -47,7 +50,7 @@ export async function POST(req: NextRequest) {
         operation:"delete",
         architecture:ARCHITECTURE,
         cachePolicy:process.env.CACHE_POLICY || "lru",
-        coldOrHot:"na",
+        coldOrHot: file.isHot ? "hot" : "cold",
         fileId:file._id.toString(),
         userId:file.userId,
         hit: file.isHot? true : false,

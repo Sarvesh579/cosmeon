@@ -74,9 +74,18 @@ export async function redistributeColdFiles() {
       }
     }
 
-    file.isHot = false
-    file.cacheExpiresAt = undefined
-    await file.save()
+    await File.updateOne(
+      { _id: file._id },
+      {
+        $set: {
+          chunks: file.chunks,
+          isHot: false
+        },
+        $unset: {
+          cacheExpiresAt: 1
+        }
+      }
+    )
 
     logEvent({
       type: "cool",

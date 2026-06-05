@@ -27,10 +27,13 @@ export async function GET(req:NextRequest){
     return NextResponse.json({error:"missing id"})
   }
   const file = await File.findById(id)
-  const wasHot = file.isHot
   if(!file){
-    return NextResponse.json({error:"file not found"})
+    return NextResponse.json(
+      { error: "file not found" },
+      { status: 404 }
+    )
   }
+  const wasHot = file.isHot
   const user = await User.findById(file.userId)
   const policy = policies[process.env.CACHE_POLICY || "lru"]
   const entry = {
@@ -40,10 +43,26 @@ export async function GET(req:NextRequest){
     createdAt:file.createdAt.getTime()
   }
   policy.recordAccess(entry)
-  file.accessCount+=1
-  if(file.accessCount>5){
-    file.heatScore+=1
-  }
+  await File.updateOne(
+    { _id: file._id },
+    {
+      $inc: {
+        accessCount: 1,
+        ...(file.accessCount > 5
+          ? { heatScore: 1 }
+          : {})
+      },
+      ...(ARCHITECTURE === "cached"
+        ? {
+            $set: {
+              cacheExpiresAt: new Date(
+                Date.now() + CACHE_TTL
+              )
+            }
+          }
+        : {})
+    }
+  )
 
   // If the file is cold, warm it: replicate chunks into the L1 cache node
   if(
@@ -64,7 +83,17 @@ export async function GET(req:NextRequest){
                   headers:{"Content-Type":"application/octet-stream"}
                 })
                 await Node.updateOne({ nodeId: cacheNodeId }, { $inc: { used: data.length } })
-                chunk.nodes.push(cacheNodeId)
+                await File.updateOne(
+                  {
+                    _id: file._id,
+                    "chunks.chunkId": chunk.chunkId
+                  },
+                  {
+                    $addToSet: {
+                      "chunks.$.nodes": cacheNodeId
+                    }
+                  }
+                )
               }
             } catch(err){
               console.error(`Cache warming failed for chunk ${chunk.chunkId}:`, err)
@@ -73,7 +102,19 @@ export async function GET(req:NextRequest){
         }
       }
     }
-    file.isHot = true
+    
+    await File.updateOne(
+      {
+        _id: file._id,
+        isHot: false
+      },
+      {
+        $set: {
+          isHot: true
+        }
+      }
+    )
+
     logEvent({
       type: "heat",
       fileId: file._id.toString(),
@@ -84,23 +125,20 @@ export async function GET(req:NextRequest){
     })
   }
 
-  // Reset/extend the cache TTL on every access
-  if(ARCHITECTURE==="cached"){
-    file.cacheExpiresAt = new Date(Date.now()+CACHE_TTL)
+  if (ARCHITECTURE === "cached") {
+    const hotFiles=await File.find().sort({heatScore:-1}).limit(CACHE_LIMIT)
+    if(hotFiles.length>=CACHE_LIMIT){
+      const entries=hotFiles.map(f=>({
+        fileId:f._id.toString(),
+        lastAccess:f.updatedAt?.getTime()||Date.now(),
+        frequency:f.accessCount||0,
+        createdAt:f.createdAt.getTime()
+      }))
+      const victim = policy.chooseEviction(entries)
+      await evictFile(victim)
+    }
   }
-  await file.save()
 
-  const hotFiles=await File.find().sort({heatScore:-1}).limit(CACHE_LIMIT)
-  if(hotFiles.length>=CACHE_LIMIT){
-    const entries=hotFiles.map(f=>({
-      fileId:f._id.toString(),
-      lastAccess:f.updatedAt?.getTime()||Date.now(),
-      frequency:f.accessCount||0,
-      createdAt:f.createdAt.getTime()
-    }))
-    const victim = policy.chooseEviction(entries)
-    await evictFile(victim)
-  }
   // Convert Mongoose DocumentArray to plain array before sorting
   const chunksToProcess = [...file.chunks].sort((a:any, b:any) => a.order - b.order)
   
@@ -213,7 +251,7 @@ export async function GET(req:NextRequest){
   await CacheMetrics.create({
     operation:"download",
     architecture:ARCHITECTURE,
-    cachePolicy:policy.name,
+    cachePolicy:policy.name.toLowerCase(),
     coldOrHot:wasHot ? "hot" : "cold",
     fileId:file._id.toString(),
     userId:file.userId,

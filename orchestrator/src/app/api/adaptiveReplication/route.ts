@@ -14,7 +14,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "file not found" })
   }
 
-  file.accessCount += 1
+  await File.updateOne(
+    { _id: file._id },
+    {
+      $inc: { accessCount: 1 }
+    }
+  )
 
   const target = NODES.find(n => n.id === "ORBIT-5")
   if (!target) {
@@ -35,10 +40,19 @@ export async function POST(req: NextRequest) {
       data,
       { headers: { "Content-Type": "application/octet-stream" } }
     )
-    chunk.nodes.push("ORBIT-5")
+    await File.updateOne(
+      {
+        _id: file._id,
+        "chunks.chunkId": chunk.chunkId
+      },
+      {
+        $addToSet: {
+          "chunks.$.nodes": "ORBIT-5"
+        }
+      }
+    )
   }
 
-  await file.save()
   return NextResponse.json({
     ok: true,
     accessCount: file.accessCount

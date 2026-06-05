@@ -3,5 +3,7 @@ export const NODES = [
   { id: "ORBIT-2", url: "http://localhost:4002" },
   { id: "ORBIT-3", url: "http://localhost:4003" },
   { id: "ORBIT-4", url: "http://localhost:4004" },
-  { id: "ORBIT-5", url: "http://localhost:4005" }
+  { id: "ORBIT-5", url: "http://localhost:4005" },
+  { id: "ORBIT-6", url: "http://localhost:4006" },
+  { id: "ORBIT-7", url: "http://localhost:4007" } 
 ]

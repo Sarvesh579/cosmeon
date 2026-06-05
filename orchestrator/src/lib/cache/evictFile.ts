@@ -18,19 +18,31 @@ export async function evictFile(
       )
 
     for(const nodeId of cacheNodes){
-      const node=
-        await Node.findOne({nodeId})
+      const node =
+        await Node.findOne({ nodeId })
+
       if(!node) continue
-      
+
       try{
         await axios.delete(
           `${node.url}/chunk/${chunk.chunkId}`
         )
       }catch{}
+
+      chunk.nodes = chunk.nodes.filter(
+        (n:string) => n !== nodeId
+      )
     }
   }
 
-  file.isHot=false
-  file.heatScore=0
-  await file.save()
+  await File.updateOne(
+    { _id: file._id },
+    {
+      $set: {
+        chunks: file.chunks,
+        isHot: false,
+        heatScore: 0
+      }
+    }
+  )
 }

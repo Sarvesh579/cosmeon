@@ -13,7 +13,10 @@ export async function POST(req:NextRequest){
     return NextResponse.json({error:"invalid"})
   }
 
-  const nodes=await Node.find({healthy:true})
+  const nodes=await Node.find({
+    healthy:true,
+    manualFailure:false
+  })
   const layout=computeCache(user,nodes)
 
   user.cacheLayout=layout

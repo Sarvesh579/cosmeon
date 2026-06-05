@@ -12,7 +12,10 @@ export async function sendChunkReplicated(
   const l2 = user?.cacheLayout?.L2 || []
 
   // Skip cache nodes for initial upload
-  const allNodes = await Node.find({healthy:true})
+  const allNodes = await Node.find({
+    healthy:true,
+    manualFailure:false
+  })
   const storageNodes = allNodes.filter(n => n.nodeId !== l1 && !l2.includes(n.nodeId))
 
   const replicas=3

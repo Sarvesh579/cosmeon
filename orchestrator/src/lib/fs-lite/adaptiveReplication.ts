@@ -74,7 +74,9 @@ export async function adaptiveReplication(){
                     headers: {"Content-Type": "application/octet-stream"}
                   })
                   await Node.updateOne({ nodeId: targetId }, { $inc: { used: data.length } })
-                  chunk.nodes.push(targetId)
+                  if (!chunk.nodes.includes(targetId)) {
+                    chunk.nodes.push(targetId)
+                  }
                   
                   if (!replicated && targetNode?.location && sourceNode.location) {
                     emitMapEvent({
@@ -99,7 +101,10 @@ export async function adaptiveReplication(){
           const chunkSize = file.size / file.chunks.length
           
           // Only update capacity if node was healthy (capacity tracking)
-          await Node.updateOne({ nodeId: victimId }, { $inc: { used: -chunkSize } })
+          await Node.updateOne(
+            {nodeId: victimId},
+            [{ $set:{ used:{ $max:[ 0, { $subtract:["$used", chunkSize ]}]}}}]
+          )
           
           if (!cooled && victimNode?.location) {
             emitMapEvent({
@@ -118,22 +123,36 @@ export async function adaptiveReplication(){
         }
       }
 
-      if (replicated || cooled) {
-        // Log events once per file movement
-        if (replicated) logEvent({ type: "distribute", fileId: file._id.toString(), filename: file.filename, userId: file.userId, size: file.size })
-        if (cooled) logEvent({ type: "cool", fileId: file._id.toString(), filename: file.filename, userId: file.userId, size: file.size })
-        
-        file.markModified('chunks')
+      if (replicated) {
+        logEvent({
+          type: "distribute",
+          fileId: file._id.toString(),
+          filename: file.filename,
+          userId: file.userId,
+          size: file.size
+        })
       }
 
-      file.heatScore = currentHeat
-      file.accessCount = 0
-      
-      try {
-        await file.save()
-      } catch (saveErr: any) {
-        if (saveErr.name !== 'VersionError') throw saveErr
+      if (cooled) {
+        logEvent({
+          type: "cool",
+          fileId: file._id.toString(),
+          filename: file.filename,
+          userId: file.userId,
+          size: file.size
+        })
       }
+
+      await File.updateOne(
+        { _id: file._id },
+        {
+          $set: {
+            chunks: file.chunks,
+            heatScore: currentHeat,
+            accessCount: 0
+          }
+        }
+      )
 
     } catch (err) {
       console.error(`[AdaptiveReplication] Error processing file ${file.filename}:`, err)

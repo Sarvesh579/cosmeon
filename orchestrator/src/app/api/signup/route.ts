@@ -14,7 +14,10 @@ export async function POST(req:NextRequest){
     return NextResponse.json({error:"user exists"})
   }
 
-  const nodes=await Node.find({healthy:true})
+  const nodes=await Node.find({
+    healthy:true,
+    manualFailure:false
+  })
 
   const user=new User({
     username,
