@@ -1,7 +1,7 @@
 import crypto from "crypto"
 import cliProgress from "cli-progress"
 
-const FILES = 30 // Number of files to upload/download/delete in the benchmark
+const FILES = 50 // Number of files to upload/download/delete in the benchmark
 
 function RandomInt(min: number, max: number): number {
   return Math.floor(Math.random() * (max - min) + min)
@@ -54,8 +54,9 @@ async function run() {
     )
 
     if (!res.ok) {
+      const body = await res.text()
       throw new Error(
-        `Upload failed (${res.status})`
+        `Upload failed (${res.status})\n ${body}`
       )
     }
 

@@ -32,106 +32,118 @@ export async function POST(req: NextRequest) {
     const operationalTasks: Promise<any>[] = []
 
     for (const file of files) {
-      let fileChanged = false
-      const migrations: Promise<any>[] = []
-      for (const chunk of file.chunks) {
-        if (chunk.nodes.includes(nodeId)) {
-          // Remove the failed node from the chunk's list
-          const remainingNodes = chunk.nodes.filter(
-            (n:string) => n !== nodeId
-          )
-
-          if (remainingNodes.length === 0) {
-            console.error(
-              `Cannot fail ${nodeId}: chunk ${chunk.chunkId} would have zero replicas`
+      try {
+        let fileChanged = false
+        const migrations: Promise<any>[] = []
+        for (const chunk of file.chunks) {
+          if (chunk.nodes.includes(nodeId)) {
+            // Remove the failed node from the chunk's list
+            const remainingNodes = chunk.nodes.filter(
+              (n:string) => n !== nodeId
             )
-            continue
-          }
 
-          chunk.nodes = remainingNodes
-          
-          // Trigger physical deletion if reachable
-          if (nodeConfig) {
-            operationalTasks.push(
-                axios.delete(`${nodeConfig.url}/chunk/${chunk.chunkId}`).catch(() => {})
-            )
-          }
+            if (remainingNodes.length === 0) {
+              console.error(
+                `Cannot fail ${nodeId}: chunk ${chunk.chunkId} would have zero replicas`
+              )
+              continue
+            }
 
-          // Trigger Emergency Migration
-          if (chunk.nodes.length > 0) {
-            const migration = (async () => {
-              let data = null
+            chunk.nodes = remainingNodes
+            
+            // Trigger physical deletion if reachable
+            if (nodeConfig) {
+              operationalTasks.push(
+                  axios.delete(`${nodeConfig.url}/chunk/${chunk.chunkId}`).catch(() => {})
+              )
+            }
 
-              for(const sourceId of chunk.nodes){
-                data = await fetchChunk(
-                  sourceId,
-                  chunk.chunkId
-                )
+            // Trigger Emergency Migration
+            if (chunk.nodes.length > 0) {
+              const migration = (async () => {
+                let data = null
 
-                if(data){
-                  break
-                }
-              }
-              if (data) {
-                // Pick a target from the healthy pool that doesn't already have this chunk
-                const pool = healthyNodeIds.filter(id => id !== nodeId && !chunk.nodes.includes(id))
-                if (pool.length === 0) {
-                  console.error(
-                    `No migration target available for ${chunk.chunkId}`
+                for(const sourceId of chunk.nodes){
+                  data = await fetchChunk(
+                    sourceId,
+                    chunk.chunkId
                   )
 
-                  return
-                }
-                
-                const targetId = pool[Math.floor(Math.random() * pool.length)]
-                const targetConfig = NODES.find(n => n.id === targetId)
-                if (targetConfig) {
-                  try {
-                    await axios.put(`${targetConfig.url}/chunk/${chunk.chunkId}`, data, {
-                      headers: { "Content-Type": "application/octet-stream" },
-                      timeout: 5000
-                    })
-                    if (!chunk.nodes.includes(targetId)) {
-                      chunk.nodes.push(targetId)
-                    }
-
-                    await Node.updateOne(
-                      { nodeId: targetId },
-                      { $inc: { used: data.length } }
-                    )
-                  } catch (e) {
-                    console.error(`Migration to ${targetId} failed`, e)
+                  if(data){
+                    break
                   }
                 }
-              }
-            })()
-            migrations.push(migration)
+                if (data) {
+                  // Pick a target from the healthy pool that doesn't already have this chunk
+                  const pool = healthyNodeIds.filter(id => id !== nodeId && !chunk.nodes.includes(id))
+                  if (pool.length === 0) {
+                    console.error(
+                      `No migration target available for ${chunk.chunkId}`
+                    )
+
+                    return
+                  }
+                  
+                  const targetId = pool[Math.floor(Math.random() * pool.length)]
+                  const targetConfig = NODES.find(n => n.id === targetId)
+                  if (targetConfig) {
+                    try {
+                      await axios.put(`${targetConfig.url}/chunk/${chunk.chunkId}`, data, {
+                        headers: { "Content-Type": "application/octet-stream" },
+                        timeout: 5000
+                      })
+                      if (!chunk.nodes.includes(targetId)) {
+                        chunk.nodes.push(targetId)
+                      }
+
+                      await Node.updateOne(
+                        { nodeId: targetId },
+                        { $inc: { used: data.length } }
+                      )
+                    } catch (e) {
+                      console.error(`Migration to ${targetId} failed`, e)
+                    }
+                  }
+                }
+              })()
+              migrations.push(migration)
+            }
+            fileChanged = true
           }
-          fileChanged = true
         }
-      }
-      await Promise.all(migrations)
+        await Promise.all(migrations)
 
-      const emptyChunk = file.chunks.find(
-        c => c.nodes.length === 0
-      )
-
-      if (emptyChunk) {
-        throw new Error(
-          `Refusing to save chunk ${emptyChunk.chunkId} with zero replicas`
+        const emptyChunk = file.chunks.find(
+          c => c.nodes.length === 0
         )
-      }
 
-      await File.updateOne(
-        { _id:file._id },
-        {
-          $set:{
-            chunks:file.chunks
-          }
+        if (emptyChunk) {
+          console.error(
+            "[EMPTY CHUNK]",
+            {
+              source: "adaptiveReplication",
+              file: file.filename,
+              chunk: emptyChunk.chunkId
+            }
+          )
+
+          throw new Error(
+            `Refusing to save chunk ${emptyChunk.chunkId} with zero replicas`
+          )
         }
-      )
-    }
 
+        await File.updateOne(
+          { _id:file._id },
+          {
+            $set:{
+              chunks: file.chunks
+            }
+          }
+        )
+      } catch (err) {
+        console.error(`Error processing file ${file.filename} during node failure handling:`, err)
+      }
+    }
     // 5. Await all critical data movements
     await Promise.all(operationalTasks)
 

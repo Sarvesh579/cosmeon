@@ -3,18 +3,21 @@ import { monitorNodes } from "./nodeHealth"
 import { redistributeColdFiles } from "@/lib/cache/redistribute"
 
 export function startScheduler(){
-  // Monitor nodes every 5s (Respects manualFailure)
-  setInterval(async()=>{
-    await monitorNodes()
-  }, 5000)
+  async function schedulerLoop() {
+    while (true) {
+      try {
+        await monitorNodes()
+        await adaptiveReplication()
+        await redistributeColdFiles()
+      } catch (err) {
+        console.error(err)
+      }
 
-  // Adaptive Replication every 15s (Self-heals and balances)
-  setInterval(async()=>{
-    await adaptiveReplication()
-  }, 15000)
+      await new Promise(
+        r => setTimeout(r, 5000)
+      )
+    }
+  }
 
-  // Every 30s: cool down files whose cache TTL has expired
-  setInterval(async()=>{
-    await redistributeColdFiles()
-  }, 30000)
+  schedulerLoop()
 }

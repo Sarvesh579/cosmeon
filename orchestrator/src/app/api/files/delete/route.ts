@@ -29,10 +29,16 @@ export async function POST(req: NextRequest) {
         const chunkSize = file.size / file.chunks.length
         for (const nodeId of chunk.nodes) {
           // Update DB stats
-          await Node.updateOne(
-            {nodeId},
-            [{ $set:{ used:{ $max:[ 0, { $subtract:["$used", chunkSize ]}]}}}]
-          )
+          const node = await Node.findOne({ nodeId })
+          if (node) {
+            await Node.updateOne(
+              { nodeId },
+              { $set: {
+                  used: Math.max(0, node.used - chunkSize)
+                }
+              }
+            )
+          }
           
           // Try to delete actual file from node
           const nodeConfig = NODES.find(n => n.id === nodeId)

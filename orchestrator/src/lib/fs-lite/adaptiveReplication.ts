@@ -99,12 +99,36 @@ export async function adaptiveReplication(){
           const victimId = chunk.nodes.pop()
           const victimNode = nodeMap[victimId] || { location: null }
           const chunkSize = file.size / file.chunks.length
-          
-          // Only update capacity if node was healthy (capacity tracking)
-          await Node.updateOne(
-            {nodeId: victimId},
-            [{ $set:{ used:{ $max:[ 0, { $subtract:["$used", chunkSize ]}]}}}]
+          const emptyChunk = file.chunks.find(
+            c => c.nodes.length === 0
           )
+
+          if (emptyChunk) {
+            console.error(
+              "[EMPTY CHUNK]",
+              {
+                source: "adaptiveReplication.ts",
+                file: file.filename,
+                chunk: emptyChunk.chunkId
+              }
+            )
+
+            throw new Error(
+              `Empty chunk ${emptyChunk.chunkId}`
+            )
+          }
+          // Only update capacity if node was healthy (capacity tracking)
+          const node = await Node.findOne({ nodeId: victimId })
+          if (node) {
+            await Node.updateOne(
+              { nodeId: victimId },
+              {
+                $set: {
+                  used: Math.max(0, node.used - chunkSize)
+                }
+              }
+            )
+          }
           
           if (!cooled && victimNode?.location) {
             emitMapEvent({

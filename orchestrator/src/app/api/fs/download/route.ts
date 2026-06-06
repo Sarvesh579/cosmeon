@@ -15,7 +15,6 @@ import { logEvent } from "@/lib/analytics"
 import {sha256} from "@/lib/fs-lite/hash"
 import {buildMerkleRoot} from "@/lib/fs-lite/merkle"
 import {ARCHITECTURE} from "@/lib/config"
-import {evictFile} from "@/lib/cache/evictFile"
 
 const CACHE_LIMIT=20
 
@@ -65,6 +64,7 @@ export async function GET(req:NextRequest){
   )
 
   // If the file is cold, warm it: replicate chunks into the L1 cache node
+  let freshFile = file
   if(
     ARCHITECTURE==="cached" &&
     !file.isHot
@@ -124,23 +124,20 @@ export async function GET(req:NextRequest){
       latency: Date.now() - startTime // Approximate heat latency
     })
   }
+  
+  const updatedFile = await File.findById(file._id)
 
-  if (ARCHITECTURE === "cached") {
-    const hotFiles=await File.find().sort({heatScore:-1}).limit(CACHE_LIMIT)
-    if(hotFiles.length>=CACHE_LIMIT){
-      const entries=hotFiles.map(f=>({
-        fileId:f._id.toString(),
-        lastAccess:f.updatedAt?.getTime()||Date.now(),
-        frequency:f.accessCount||0,
-        createdAt:f.createdAt.getTime()
-      }))
-      const victim = policy.chooseEviction(entries)
-      await evictFile(victim)
-    }
+  if (!updatedFile) {
+    return NextResponse.json(
+      { error: "file not found" },
+      { status: 404 }
+    )
   }
 
+  freshFile = updatedFile
+
   // Convert Mongoose DocumentArray to plain array before sorting
-  const chunksToProcess = [...file.chunks].sort((a:any, b:any) => a.order - b.order)
+  const chunksToProcess = [...freshFile.chunks].sort((a:any, b:any) => a.order - b.order)
   
   const buffers: Buffer[] = []
   
