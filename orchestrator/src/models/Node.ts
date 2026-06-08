@@ -4,6 +4,15 @@ const NodeSchema = new mongoose.Schema({
   nodeId: String,
   url: String,
   rack: String,
+  storageType: {
+    type: String,
+    enum: ["storage", "cache"],
+    required: true
+  },
+  accessTime: {
+    type: Number,
+    default: 0
+  },
   capacity: Number,
   used: Number,
   latency: Number,

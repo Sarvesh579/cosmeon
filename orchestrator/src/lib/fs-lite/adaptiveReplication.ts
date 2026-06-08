@@ -45,7 +45,13 @@ export async function adaptiveReplication(){
 
         // Migration/Replication logic
         if(chunk.nodes.length < targetReplicas && chunk.nodes.length > 0) {
-          const sourceId = chunk.nodes[0]
+          const storageNode =
+            chunk.nodes.find(
+              id =>
+                nodeMap[id]?.storageType==="storage"
+            )
+          const sourceId =
+            storageNode || chunk.nodes[0]
           const sourceNode = nodeMap[sourceId]
           const data = await fetchChunk(sourceId, chunk.chunkId)
           
@@ -60,7 +66,15 @@ export async function adaptiveReplication(){
             }
 
             if (!targetId) {
-              const pool = healthyNodeIds.filter(id => !chunk.nodes.includes(id))
+              const pool = healthyNodes
+                .filter(
+                  n =>
+                    n.storageType==="cache" &&
+                    !chunk.nodes.includes(n.nodeId)
+                )
+                .map(
+                  n => n.nodeId
+                )
               if (pool.length > 0) targetId = pool[Math.floor(Math.random()*pool.length)]
             }
 
@@ -96,7 +110,21 @@ export async function adaptiveReplication(){
         } 
         // Cooling logic
         else if (chunk.nodes.length > targetReplicas) {
-          const victimId = chunk.nodes.pop()
+          const cacheVictims =
+            chunk.nodes.filter(
+              id =>
+                nodeMap[id]?.storageType==="cache"
+            )
+
+          const victimId =
+            cacheVictims[
+              cacheVictims.length-1
+            ]
+
+          chunk.nodes =
+            chunk.nodes.filter(
+              id => id!==victimId
+            )
           const victimNode = nodeMap[victimId] || { location: null }
           const chunkSize = file.size / file.chunks.length
           const emptyChunk = file.chunks.find(

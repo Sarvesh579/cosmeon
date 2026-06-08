@@ -14,6 +14,7 @@ const Schema=new mongoose.Schema({
   hit:Boolean,
   cacheLevel:String,
   latency:Number,
+  endToendLatency:Number,
   distance:Number,
   nodeId:String,
   chunkCount:Number,

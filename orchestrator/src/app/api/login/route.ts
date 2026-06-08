@@ -15,7 +15,8 @@ export async function POST(req:NextRequest){
 
   const nodes=await Node.find({
     healthy:true,
-    manualFailure:false
+    manualFailure:false,
+    storageType:"cache"
   })
   const layout=computeCache(user,nodes)
 

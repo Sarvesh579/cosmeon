@@ -12,11 +12,16 @@ export async function fetchChunk(nodeId:string, chunkId:string, userLocation?:an
   const node=await Node.findOne({nodeId})
   if(!node) return null
   
+  let simulatedLatency = node.accessTime || 0
+
   if(userLocation && node.location){
-    const km = distance(userLocation,node.location)
-    const simulatedLatency = 2 + (km * 0.5) // Base 2ms + 0.5ms per km
-    await sleep(simulatedLatency)
+    const km = distance(
+      userLocation,
+      node.location
+    )
+    simulatedLatency += km * 0.5
   }
+  await sleep(simulatedLatency)
 
   try {
     const res=await axios.get(`${node.url}/chunk/${chunkId}`,{

@@ -30,14 +30,14 @@ export async function redistributeColdFiles() {
       const user = await User.findById(file.userId).lean()
       if (!user) continue
 
-      const cacheNodeIds: string[] = [
-        ...(user.cacheLayout?.L1 ? [user.cacheLayout.L1] : []),
-        ...(user.cacheLayout?.L2 || [])
-      ]
+      const cacheNodeIds =
+        allNodes
+          .filter( n=>n.storageType==="cache" )
+          .map( n=>n.nodeId )
 
       // Find a non-cache storage node to target in the animation
-      const storageNode = allNodes.find(n =>
-        !cacheNodeIds.includes(n.nodeId) && n.location?.lat && n.location?.lon
+      const storageNode = allNodes.find(
+        n => n.storageType==="storage"
       )
 
       let emittedCooldown = false

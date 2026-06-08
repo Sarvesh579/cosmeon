@@ -1,7 +1,7 @@
 import crypto from "crypto"
 import cliProgress from "cli-progress"
 
-const FILES = 50 // Number of files to upload/download/delete in the benchmark
+const FILES = 20 // Number of files to upload/download/delete in the benchmark
 
 function RandomInt(min: number, max: number): number {
   return Math.floor(Math.random() * (max - min) + min)
@@ -83,17 +83,16 @@ async function run() {
     const down = await fetch(
       `http://localhost:3000/api/fs/download?id=${f.fileId}`
     )
-
-   if (!down.ok) {
+    if (!down.ok) {
       const body = await down.text()
 
       throw new Error(
         `Download failed (${down.status})\n${body}`
       )
-    } 
+    }
+    await down.arrayBuffer()
     downloadBar.increment()
   }
-
   downloadBar.stop()
 
   // ---------------- WAITING -----------------

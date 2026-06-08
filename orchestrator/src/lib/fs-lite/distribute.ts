@@ -16,17 +16,20 @@ export async function sendChunkReplicated(
     healthy:true,
     manualFailure:false
   })
-  const storageNodes = allNodes.filter(n => n.nodeId !== l1 && !l2.includes(n.nodeId))
+  const storageNodes =
+    allNodes.filter(
+      n=>n.storageType==="storage"
+    )
 
-  const replicas=3
+  const replicas = 2
   // Ensure we only use storage nodes for initial placement
   if (storageNodes.length < replicas) {
     console.warn(`Insufficient standard storage nodes (${storageNodes.length}). Using all available non-cache nodes.`)
   }
   
-  const pool = storageNodes.length > 0 ? storageNodes : allNodes
-  const shuffled=[...pool].sort(()=>Math.random()-0.5)
-  const targets=shuffled.slice(0, Math.min(replicas, pool.length))
+  const pool = storageNodes
+  const shuffled=[...pool]
+  const targets=shuffled.slice(0,2)
   const selected:string[]=[]
 
   for(const node of targets){
