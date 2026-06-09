@@ -141,6 +141,7 @@
     console.log(
       freshFile?.chunks[0]?.nodes
     )
+    
 
     // Convert Mongoose DocumentArray to plain array before sorting
     const chunksToProcess = [...freshFile.chunks].sort((a:any, b:any) => a.order - b.order)
