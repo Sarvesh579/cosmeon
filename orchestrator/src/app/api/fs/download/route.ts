@@ -92,12 +92,12 @@
                   await Node.updateOne({ nodeId: cacheNodeId }, { $inc: { used: data.length } })
                   await File.updateOne(
                     {
-                      _id: file._id,
-                      "chunks.chunkId": chunk.chunkId
+                      _id:file._id,
+                      "chunks.chunkId":chunk.chunkId
                     },
                     {
-                      $addToSet: {
-                        "chunks.$.nodes": cacheNodeId
+                      $addToSet:{
+                        "chunks.$.nodes":cacheNodeId
                       }
                     }
                   )
@@ -109,6 +109,11 @@
           }
         }
       }
+      const verify = await File.findById(file._id)
+
+      console.log(
+        verify?.chunks[0]?.nodes
+      )
       
       await File.updateOne(
         {
@@ -162,7 +167,12 @@
       const start = Date.now()
 
       let orderedNodes:string[]
-
+      console.log(
+        chunk.nodes.map(id=>({
+          id,
+          type: nodeMap[id]?.storageType
+        }))
+      )
       if(
         ARCHITECTURE==="cached" &&
         wasHot
