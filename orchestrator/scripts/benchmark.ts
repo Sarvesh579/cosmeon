@@ -1,7 +1,7 @@
 import crypto from "crypto"
 import cliProgress from "cli-progress"
 
-const FILES = 20 // Number of files to upload/download/delete in the benchmark
+const FILES = 50 // Number of files to upload/download/delete in the benchmark
 
 function RandomInt(min: number, max: number): number {
   return Math.floor(Math.random() * (max - min) + min)
