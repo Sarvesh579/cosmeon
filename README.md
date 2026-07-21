@@ -1,6 +1,6 @@
 # COSMEON - Distributed File System
 
-COSMEON FS is an educational distributed file system, with some improvements to the traditional working: 
+COSMEON-FS is an educational distributed file system, with some improvements to the traditional working: 
 - Cache Based Architecture,
 - Adaptive Replication, and
 - merkle verifiable repair.
